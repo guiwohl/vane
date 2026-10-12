@@ -8,7 +8,7 @@
     {
       "name": "vane",
       "source": "./",
-      "description": "Side pane with Activity, Files, Agents, Context, MCP, Skills and Spend tabs, a status line, a restyled chat and terminal Mermaid diagrams."
+      "description": "Side pane with Overview, Agents, Context, Setup and Spend tabs, a status line, a restyled chat and terminal Mermaid diagrams."
     }
   ]
 }

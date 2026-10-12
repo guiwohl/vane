@@ -17,6 +17,14 @@ vane is a personal fork of [markneonin/paneline](https://github.com/markneonin/p
 
 ## Install, update and remove (this fork)
 
+On Claude Code 2.1.275 or later, one line installs it:
+
+```
+/plugin install vane --marketplace guiwohl/vane
+```
+
+That is the whole install, and Claude Code owns the checkout. Use the installer below instead when you want the checkout at a path you know, `~/.claude/mods/vane`, so you can edit the files and reload.
+
 It installs globally and touches no project. The installer only writes inside `~/.claude`: it clones the repo to `~/.claude/mods/vane` and adds two entries to `~/.claude/settings.json`. It never reads or writes a project's `.claude`, and it behaves the same from any directory.
 
 ```
