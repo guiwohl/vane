@@ -2,14 +2,12 @@ import { atom, read, update } from "claude-code";
 import type { EngineInterface, On, SessionMessage } from "claude-code";
 
 import type { CallRecord, StartedCall } from "../types";
-import { callRecord } from "./activity-calls";
 import { AGENTS_TAB } from "./agents-tab";
 import { callDetails } from "./call-detail";
-import { UNMEASURED_MS } from "./activity-track";
+import { recordOf } from "./call-lookup";
 import { failureText } from "./command-failure";
 import { PANE } from "./pane-tab";
 import { isShownTab } from "./shown-tab";
-import { targetOf } from "./tools";
 
 const callsAtom = atom({ plugin: "vane", key: "calls" } as const, [] as CallRecord[]);
 const runningAtom = atom({ plugin: "vane", key: "running" } as const, [] as StartedCall[]);
@@ -57,22 +55,7 @@ export function registerCallOverlay(on: On): void {
 }
 
 async function openedCall($: EngineInterface, callId: string): Promise<CallRecord | undefined> {
-  const stored = (await read($, callsAtom)).find((call) => call.id === callId);
-  if (stored) return stored;
-  const use = (await messagesOf($))
-    .flatMap((message) => message.toolUses)
-    .find((one) => one.tool_use_id === callId);
-  if (!use) return undefined;
-  const entry = {
-    id: use.tool_use_id,
-    tool: use.tool,
-    target: targetOf(use.input),
-    ms: use.durationMs ?? UNMEASURED_MS,
-    isErrored: use.isError === true,
-    added: 0,
-    removed: 0,
-  };
-  return callRecord(use.input, entry, { text: use.text }, undefined);
+  return recordOf(await read($, callsAtom), await messagesOf($), callId);
 }
 
 async function messagesOf($: EngineInterface): Promise<SessionMessage[]> {

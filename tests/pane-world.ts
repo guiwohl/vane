@@ -23,6 +23,7 @@ export type World = {
   draft: { text: string };
   agentsListed: AgentInfo[];
   messages: Record<string, SessionMessage[]>;
+  mainMessages: SessionMessage[];
   spawned: number;
   callsMade: number;
   stepUsage: TurnUsage | null;
@@ -69,6 +70,7 @@ export function worldOf(on: On, spec: WorldSpec = {}): World {
     draft: { text: "" },
     agentsListed: [],
     messages: {},
+    mainMessages: [],
     spawned: 0,
     callsMade: 0,
     stepUsage: null,
@@ -129,7 +131,7 @@ export function worldOf(on: On, spec: WorldSpec = {}): World {
     return { result: "ok", text: "ok" };
   });
   on("session.messages", (_$, e) => ({
-    value: e.agentId === undefined ? [] : (world.messages[e.agentId] ?? []),
+    value: e.agentId === undefined ? world.mainMessages : (world.messages[e.agentId] ?? []),
   }));
   on("command.list", () => ({ value: spec.commands ?? [] }));
   on("command.run", { command: "mcp" }, (_$, e) => {

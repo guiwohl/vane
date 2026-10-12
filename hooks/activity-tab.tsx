@@ -4,6 +4,7 @@ import type { EngineInterface, On, Timer } from "claude-code";
 import type {
   Activity,
   AgentTree,
+  BackgroundWork,
   CallRecord,
   RereadState,
   StartedCall,
@@ -11,6 +12,7 @@ import type {
 } from "../types";
 import { activityTab } from "./activity-draw";
 import { isRunning } from "./agents-model";
+import { recordOf } from "./call-lookup";
 import { withoutCleared } from "./clear-kit";
 import { liveEntries } from "./live-draw";
 import { PANE } from "./pane-tab";
@@ -40,6 +42,8 @@ const rereadAtom = atom(
   { seen: [], suppressed: 0 } as RereadState,
 );
 
+const backgroundAtom = atom({ plugin: "vane", key: "background" } as const, [] as BackgroundWork[]);
+const openCallAtom = atom({ plugin: "vane", key: "openCall" } as const, null as string | null);
 const runningAtom = atom({ plugin: "vane", key: "running" } as const, [] as StartedCall[]);
 const agentsAtom = atom({ plugin: "vane", key: "agents" } as const, {} as AgentTree);
 const sessionUsdAtom = atom({ plugin: "vane", key: "sessionUsd" } as const, null as number | null);
@@ -50,7 +54,7 @@ export function registerActivityTab(on: On): void {
       stopTicking();
       return next(e);
     }
-    const [allActivity, series, usage, now, cleared, running, agents, usd, reread] =
+    const [allActivity, series, usage, now, cleared, running, agents, usd, reread, background] =
       await Promise.all([
         read($, activityAtom),
         read($, seriesAtom),
@@ -61,12 +65,15 @@ export function registerActivityTab(on: On): void {
         read($, agentsAtom),
         read($, sessionUsdAtom),
         read($, rereadAtom),
+        read($, backgroundAtom),
       ]);
     const activity = withoutCleared(allActivity, cleared.ids);
     const live = liveEntries({
       running,
       agents: Object.values(agents).filter(isRunning),
       activity,
+      background,
+      now,
     });
     if (live.length > 0) ticker ??= $.clock.every(TICK_MS, () => $.ui.invalidate("ui.render"));
     else stopTicking();
@@ -81,6 +88,7 @@ export function registerActivityTab(on: On): void {
       width: e.props.bodyColumns,
       height: e.props.scroll.bodyRows - TAB_BAR_ROWS,
       clear: () => void clearActivity($),
+      openCall: (id) => void openIfRecorded($, id),
     });
   });
 
@@ -101,4 +109,9 @@ async function clearActivity($: EngineInterface): Promise<void> {
     update($, clearedAtom, () => ({ ids: [...activity, ...calls].map((entry) => entry.id) })),
     update($, seriesAtom, clearedRing),
   ]);
+}
+
+async function openIfRecorded($: EngineInterface, callId: string): Promise<void> {
+  const [calls, messages] = await Promise.all([read($, callsAtom), $.session.messages()]);
+  if (recordOf(calls, messages, callId)) await update($, openCallAtom, () => callId);
 }

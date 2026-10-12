@@ -17,6 +17,8 @@ export type RunningCall = { callId: string; tool: string; target: string };
 
 export type StartedCall = RunningCall & { startedAt: number };
 
+export type BackgroundWork = { id: string; type: string; label: string; startedAt: number };
+
 export type TurnStats = { reads: number; commands: number; changedFiles: number };
 
 export type UsageSnap = {
@@ -99,6 +101,7 @@ declare module "claude-code" {
       calls: CallRecord[];
       openCall: string | null;
       running: StartedCall[];
+      background: BackgroundWork[];
       toolMs: StateFamily<number>;
       turnStats: StateFamily<TurnStats | null>;
       series: SeriesRing;

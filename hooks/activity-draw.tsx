@@ -24,6 +24,7 @@ export type ActivityView = {
   width: number;
   height: number;
   clear: () => void;
+  openCall: (id: string) => void;
 };
 
 type Block = { key: string; rank: number; lines: RenderElement[] };
@@ -70,7 +71,7 @@ function blocks(ui: Ui, view: ActivityView): Block[] {
     {
       key: "now",
       rank: view.live.length === 0 ? 4 : 1,
-      lines: liveBlock(ui, view.live, view.now, view.width),
+      lines: liveBlock(ui, view.live, view.now, view.width, view.openCall),
     },
   ];
 }

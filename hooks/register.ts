@@ -2,6 +2,7 @@ import type { Register } from "claude-code";
 
 import { trackActivity } from "./activity-track";
 import { trackAgents } from "./agents-track";
+import { trackBackground } from "./background-track";
 import { registerCallOverlay } from "./call-overlay";
 import { renderChat } from "./chat-render";
 import { trackCommands } from "./command-track";
@@ -23,6 +24,7 @@ export const register: Register = (on, options) => {
   registerSessionPane(on);
   registerCallOverlay(on);
   trackAgents(on);
+  trackBackground(on);
   trackPromptInfo(on);
   trackActivity(on);
   trackUsage(on);
