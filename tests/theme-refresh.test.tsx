@@ -114,7 +114,7 @@ function paneWorld(on: On, theme: string): void {
 
 async function drawPane($: Engine) {
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

@@ -10,7 +10,7 @@ The plugin loader and the validator (`claude plugin validate .`) refuse some cod
 the state library's read takes a source the scan can read: ... written there or in a const of this file
 ```
 
-So every file that touches a key declares its own `atom({ plugin: "paneline", key: "usage" } as const, initial)`. Repeat the line. The key and the type come from `types/index.d.ts`.
+So every file that touches a key declares its own `atom({ plugin: "vane", key: "usage" } as const, initial)`. Repeat the line. The key and the type come from `types/index.d.ts`.
 
 ## `$` does not cross files
 

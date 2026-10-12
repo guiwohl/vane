@@ -170,7 +170,7 @@ async function paneOnTab($: Engine, label: string): Promise<Node> {
     await $.tool.call({ ...call, tool_use_id: `tl-${i}` } as never);
   await clock.advance(FLUSH_MS);
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

@@ -9,11 +9,10 @@ export type Usage = {
   cache_creation_input_tokens: number;
 };
 export type TreeRow = { node: AgentNode; depth: number; isLast: boolean };
-type VisibleRows = { rows: TreeRow[]; hiddenDone: number };
 
 export const KEPT_AGENTS = 60;
 
-const FINISHED: AgentStatus[] = ["done", "failed", "killed", "stopped"];
+const UNNAMED_AGENT = "Sub-Agent";
 
 type SpawnInfo = Pick<
   AgentNode,
@@ -124,26 +123,12 @@ export function reconciled(tree: AgentTree, list: ListedAgent[], at: number): Ag
   }, tree);
 }
 
-export function hasFinished(tree: AgentTree): boolean {
-  return Object.values(tree).some((node) => FINISHED.includes(node.status));
+export function isRunning(node: AgentNode): boolean {
+  return node.status === "running";
 }
 
-function finishKey(node: AgentNode): string {
-  return `${node.id}@${node.endedAt ?? ""}`;
-}
-
-export function finishedKeys(tree: AgentTree): string[] {
-  return Object.values(tree)
-    .filter((node) => FINISHED.includes(node.status))
-    .map(finishKey);
-}
-
-export function withoutCleared(tree: AgentTree, keys: string[]): AgentTree {
-  return Object.fromEntries(
-    Object.entries(tree).filter(
-      ([, node]) => !(FINISHED.includes(node.status) && keys.includes(finishKey(node))),
-    ),
-  );
+export function runningOnly(tree: AgentTree): AgentTree {
+  return Object.fromEntries(Object.entries(tree).filter(([, node]) => isRunning(node)));
 }
 
 export function pruned(tree: AgentTree, max = KEPT_AGENTS): AgentTree {
@@ -158,45 +143,25 @@ export function pruned(tree: AgentTree, max = KEPT_AGENTS): AgentTree {
   return Object.fromEntries(Object.entries(tree).filter(([id]) => !dropped.includes(id)));
 }
 
-export function visibleRows(tree: AgentTree, doneLimit: number): VisibleRows {
+export function visibleRows(tree: AgentTree): TreeRow[] {
   const nodes = Object.values(tree);
   const parentOf = (node: AgentNode) =>
     node.parentId !== undefined && tree[node.parentId] ? node.parentId : undefined;
-  const childrenOf = (parentId: string | undefined) =>
-    nodes.filter((node) => parentOf(node) === parentId);
-  const isActive = (node: AgentNode): boolean =>
-    !FINISHED.includes(node.status) || childrenOf(node.id).some(isActive);
-  const endOf = (node: AgentNode) => node.endedAt ?? node.startedAt;
-  const ordered = (siblings: AgentNode[]) => [
-    ...siblings.filter(isActive).sort((a, b) => a.startedAt - b.startedAt),
-    ...siblings.filter((node) => !isActive(node)).sort((a, b) => endOf(b) - endOf(a)),
-  ];
   const walk = (
     parentId: string | undefined,
     depth: number,
   ): { node: AgentNode; depth: number }[] =>
-    ordered(childrenOf(parentId)).flatMap((node) => [{ node, depth }, ...walk(node.id, depth + 1)]);
-  const hidden = new Set<string>();
-  let doneShown = 0;
-  const shown = walk(undefined, 0).filter(({ node }) => {
-    if (isActive(node)) return true;
-    const parent = parentOf(node);
-    if ((parent !== undefined && hidden.has(parent)) || doneShown >= doneLimit) {
-      hidden.add(node.id);
-      return false;
-    }
-    doneShown += 1;
-    return true;
-  });
+    nodes
+      .filter((node) => parentOf(node) === parentId)
+      .sort((a, b) => a.startedAt - b.startedAt)
+      .flatMap((node) => [{ node, depth }, ...walk(node.id, depth + 1)]);
+  const shown = walk(undefined, 0);
   const lastChildOf = new Map(shown.map(({ node }) => [parentOf(node), node.id]));
-  return {
-    rows: shown.map(({ node, depth }) => ({
-      node,
-      depth,
-      isLast: lastChildOf.get(parentOf(node)) === node.id,
-    })),
-    hiddenDone: hidden.size,
-  };
+  return shown.map(({ node, depth }) => ({
+    node,
+    depth,
+    isLast: lastChildOf.get(parentOf(node)) === node.id,
+  }));
 }
 
 function newNode(
@@ -222,4 +187,12 @@ function update(tree: AgentTree, id: string, change: (node: AgentNode) => AgentN
 function resumedNode(node: AgentNode): AgentNode {
   const { endedAt: _endedAt, ...rest } = node;
   return { ...rest, status: "running" };
+}
+
+export function nameOf(node: AgentNode): string {
+  return node.name || node.type || UNNAMED_AGENT;
+}
+
+export function titleOf(node: AgentNode): string {
+  return node.description || nameOf(node);
 }

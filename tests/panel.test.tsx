@@ -117,7 +117,7 @@ function drawer($: Engine, on: On): (drawing: Drawing) => Promise<Node> {
   return async (drawing) => {
     current = drawing;
     const ui = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "InfoNotice",
       props: { text: "x", command: null },

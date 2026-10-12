@@ -199,7 +199,7 @@ function table(headers: string[], rows: string[][]): string {
 
 async function treeOf($: Engine, text: string, columns: number): Promise<Node> {
   const ui = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text, isFirstOfReply: false },

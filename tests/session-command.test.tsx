@@ -3,8 +3,10 @@ import type { On } from "claude-code";
 import type { Engine } from "claude-code/testing";
 
 const SESSION_START = { cwd: "/work", surface: "terminal", isInteractive: true } as const;
-const FAILURE_PREFIX = "paneline: could not open the pane: ";
+const FAILURE_PREFIX = "vane: could not open the pane: ";
 const OPEN_ERROR = "pane host is gone";
+
+type World = { failOpen: boolean; logs: string[]; panes: { id: string }[]; closed: string[] };
 
 describe("session command", () => {
   test("C1 a failing pane open answers with the error text instead of falling through", async ($, on) => {
@@ -27,6 +29,16 @@ describe("session command", () => {
     expect(result.text).toBeUndefined();
     expect(world.logs).toEqual([]);
   });
+
+  test("C3 running it while the pane is open closes the pane instead of opening it again", async ($, on) => {
+    const world = worldOf(on);
+    await $.session.start(SESSION_START);
+    world.panes = [{ id: "session" }];
+
+    await run($);
+
+    expect(world.closed).toEqual(["session"]);
+  });
 });
 
 function run($: Engine) {
@@ -38,10 +50,10 @@ function run($: Engine) {
   });
 }
 
-function worldOf(on: On): { failOpen: boolean; logs: string[] } {
+function worldOf(on: On): World {
   mock.clock(on);
   mock.env(on, { HOME: "/home" });
-  const world = { failOpen: false, logs: [] as string[] };
+  const world: World = { failOpen: false, logs: [], panes: [], closed: [] };
   on("session.model", () => ({ value: "claude-opus-5-5" }));
   on("session.cwd", () => ({ value: "/work" }));
   on("session.usage", () => ({
@@ -52,6 +64,11 @@ function worldOf(on: On): { failOpen: boolean; logs: string[] } {
   on("ui.open", () => {
     if (world.failOpen) throw new Error(OPEN_ERROR);
     return { value: { isPlaced: true } };
+  });
+  on("ui.panes", () => ({ value: world.panes }) as never);
+  on("ui.close", (_$, e) => {
+    world.closed.push(e.id);
+    return { value: undefined };
   });
   on("ui.log", (_$, e) => {
     world.logs.push(e.text);

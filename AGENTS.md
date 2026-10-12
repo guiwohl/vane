@@ -1,4 +1,4 @@
-# paneline
+# vane
 
 A Claude Code plugin: a side pane with tabs, a status row above the input and a restyled chat. TypeScript and React hooks that the engine reloads while it runs.
 
@@ -22,7 +22,7 @@ Never edit files in `backlog/` by hand. A new feature starts as a task whose acc
 
 ## Commits
 
-One line, no body, no trailers: `<type>(<scope>): <short description>`, for example `feat(files): add reset button`. Split a change that does not fit one line.
+One line, no body, no trailers: `<type>(<scope>): <short description>`, for example `feat(agents): add reset button`. Split a change that does not fit one line.
 
 ## Code rules
 
@@ -53,7 +53,7 @@ The plugin loader and validator are strict. Read `docs/engine-limits.md` before 
 - `*-tab.tsx`: one file per pane tab. Exports the tab id and label and registers its render hook.
 - `*-draw.tsx`, `pane-kit.tsx`, `tab-bar.tsx`, `tree-glyphs.ts`: pane bodies (pure functions) and shared pane rows.
 - `session-pane.tsx`, `pane-tab.ts`, `shown-tab.ts`: the pane shell, the pane id and the shown-tab memory.
-- `*-track.ts`, `prompt-info.tsx`, `breakdown.ts`: event hooks and data loaders that fill state. `git-run.ts` runs git for the trackers.
+- `*-track.ts`, `breakdown.ts`: event hooks and data loaders that fill state. `git-run.ts` runs git for the trackers.
 - `format.ts`, `paths.ts`, `tools.ts`, `servers.ts`: shared helpers for text, paths, tool calls and MCP servers.
 - `chat-render.tsx`, `chat-draw.tsx`, `reply-*.ts(x)`, `markdown.ts`, `diagram*.ts(x)`, `table-draw.tsx`, `diff-panel.tsx`, `panel.tsx`: chat rendering.
 - `palette.ts`, `session-color.ts`, `text-width.ts`, `memo.ts`, `single-flight.ts`, `probe.ts`: shared helpers.

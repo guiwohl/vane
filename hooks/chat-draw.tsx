@@ -49,20 +49,6 @@ const CALL_KINDS = [
   { pattern: /^(Grep|Glob)$/, verb: "Searched", noun: "time" },
 ];
 
-function rightHeader(ui: Ui, label: string, look: HeaderLook, width: number): RenderElement {
-  const { Text } = ui;
-  return (
-    <Text wrap="truncate-end">
-      <Text
-        color={look.ruleColor}
-      >{`${look.ruleChar.repeat(Math.max(0, width - label.length - 1))} `}</Text>
-      <Text bold color={look.color}>
-        {label}
-      </Text>
-    </Text>
-  );
-}
-
 export function userBlock(ui: Ui, text: string, layout: Layout, fills: Fills): RenderElement {
   return userCache(`user|${fills.source}|${layout.width}|${text}`, () =>
     buildUserBlock(ui, text, layout, fills),
@@ -74,12 +60,12 @@ function buildUserBlock(ui: Ui, text: string, layout: Layout, fills: Fills): Ren
   const { width } = layout;
   return (
     <Box flexDirection="column" marginTop={1} marginLeft={TEXT_COLUMN} width={width}>
-      {rightHeader(ui, "USER", userLook(fills), width)}
+      {header(ui, "USER", userLook(fills), width)}
       {wrapPlain(cleanText(withoutPastedTags(text)), width - 3).map((line, i) => (
-        <Box key={`u${i}`} width={width} justifyContent="flex-end" backgroundColor={fills.userBand}>
+        <Box key={`u${i}`} width={width} backgroundColor={fills.userBand}>
           <Text backgroundColor={fills.userBand}>
-            <Text color={palette.userText}>{`${line} `}</Text>
-            <Text color={fills.user}>▌</Text>
+            <Text color={fills.user}>▌ </Text>
+            <Text color={palette.userText}>{line}</Text>
           </Text>
         </Box>
       ))}

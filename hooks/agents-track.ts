@@ -6,6 +6,7 @@ import type { AgentTree } from "../types";
 import { AGENTS_TAB } from "./agents-tab";
 import {
   completed,
+  isRunning,
   located,
   pruned,
   reconciled,
@@ -34,13 +35,12 @@ const FLUSH_DELAY_MS = 300;
 const POLL_MS = 1000;
 const PRESENT_AGENT_ID = /^(?!undefined$)./;
 
-const agentsAtom = atom({ plugin: "paneline", key: "agents" } as const, {} as AgentTree);
-const sessionUsdAtom = atom(
-  { plugin: "paneline", key: "sessionUsd" } as const,
-  null as number | null,
-);
+const agentsAtom = atom({ plugin: "vane", key: "agents" } as const, {} as AgentTree);
+const sessionUsdAtom = atom({ plugin: "vane", key: "sessionUsd" } as const, null as number | null);
 
-const spendAtom = atom({ plugin: "paneline", key: "spend" } as const, emptySpend());
+const openAgentAtom = atom({ plugin: "vane", key: "openAgent" } as const, null as string | null);
+
+const spendAtom = atom({ plugin: "vane", key: "spend" } as const, emptySpend());
 
 let tree: AgentTree = {};
 let seeding: Promise<void> | undefined;
@@ -126,6 +126,7 @@ export function trackAgents(on: On): void {
     const at = await $.clock.now();
     await record($, (current) => completed(current, agentId, e.reason, at));
     await relocate($, agentId);
+    if ((await read($, openAgentAtom)) === agentId) await update($, openAgentAtom, () => null);
     return next(e);
   });
 
@@ -155,6 +156,7 @@ export function trackAgents(on: On): void {
     places.clear();
     rootOfAgent.clear();
     await record($, () => ({}));
+    await update($, openAgentAtom, () => null);
     return next(e);
   });
 }
@@ -233,14 +235,22 @@ function stopPolling(): void {
 }
 
 function hasRunningAgent(): boolean {
-  return Object.values(tree).some((node) => node.status === "running");
+  return Object.values(tree).some(isRunning);
 }
 
 async function pollOnce($: EngineInterface): Promise<void> {
   const [listed, at] = await Promise.all([$.agent.list(), $.clock.now()]);
   await record($, (current) => reconciled(current, listed, at));
+  await closeStoppedAgent($);
   $.ui.invalidate("ui.render");
   if (!hasRunningAgent() || !isShownTab(AGENTS_TAB.id)) stopPolling();
+}
+
+async function closeStoppedAgent($: EngineInterface): Promise<void> {
+  const openId = await read($, openAgentAtom);
+  if (openId === null) return;
+  const node = tree[openId];
+  if (!node || !isRunning(node)) await update($, openAgentAtom, () => null);
 }
 
 function scheduleFlush($: EngineInterface): void {

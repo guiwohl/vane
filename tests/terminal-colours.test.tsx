@@ -49,7 +49,7 @@ describe("prose colour per theme", () => {
   test("AT9 under light-ansi the Completed footer numbers draw in the terminal default colour", async ($, on) => {
     await sessionWithTheme($, on, "light-ansi");
     const ui = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "TurnDuration",
       props: { word: "Completed", durationMs: 12_000 },
@@ -148,7 +148,7 @@ async function sessionWithTheme($: Engine, on: On, theme: string | { value: stri
 
 function mountUser($: Engine) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "UserMessage",
     props: { text: "hello there", origin: { kind: "composer" }, isExpanded: false },
@@ -158,7 +158,7 @@ function mountUser($: Engine) {
 
 function mountReply($: Engine, text: string) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text, isFirstOfReply: true },
@@ -168,7 +168,7 @@ function mountReply($: Engine, text: string) {
 
 function mountDiff($: Engine) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolResult",
     props: {

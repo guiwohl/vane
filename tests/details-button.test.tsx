@@ -24,7 +24,7 @@ describe("details button", () => {
 
 function mountToolGroup($: Engine) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolGroup",
     props: {

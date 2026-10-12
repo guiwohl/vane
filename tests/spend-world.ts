@@ -85,7 +85,7 @@ const FLUSH_MS = 1_000;
 const SETTLE_TICKS = 5;
 const PANE_ROWS = 80;
 const WORK = "/work";
-const SPEND_STATE_PREFIX = "paneline.spend.";
+const SPEND_STATE_PREFIX = "vane.spend.";
 const TRACKED_USE_KEYS = ["toolUses", "skillUses"];
 const CORRUPT_VALUE = { sessions: "not a list", owners: 7 };
 const TAB_NAMES = ["Activity", "Files", "Agents", "Context", "MCP", "Skills", "Spend"];
@@ -587,7 +587,7 @@ function gapAbove(shown: Line[], at: number): number {
 
 export function openPane($: Engine, columns: number = COLUMNS): Promise<Pane> {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

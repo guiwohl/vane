@@ -37,7 +37,7 @@ const AGENT_SONNET_2_USD = 1_000_000;
 const MAIN_OPUS_4_USD = 1_000_000;
 const FOUR_DOLLARS = 4;
 const EIGHT_DOLLARS = 8;
-const SPEND_STATE_PREFIX = "paneline.spend.";
+const SPEND_STATE_PREFIX = "vane.spend.";
 const SPEND_SESSIONS_KEY = "spendSessions";
 
 describe("spend cache misses across a plugin reload", () => {

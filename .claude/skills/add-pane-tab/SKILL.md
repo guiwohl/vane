@@ -1,6 +1,6 @@
 ---
 name: add-pane-tab
-description: Use when adding a tab to the paneline side pane, or changing which data a tab loads.
+description: Use when adding a tab to the vane side pane, or changing which data a tab loads.
 ---
 
 # Add a pane tab
@@ -9,7 +9,7 @@ Read `docs/architecture.md` (Side pane) and `docs/engine-limits.md` first. Use `
 
 1. Create a Backlog.md task for the tab (see `AGENTS.md`).
 2. Find the data source before you plan. Search `.claude-plugin/types/claude-code/index.d.ts` for the noun you need. Do not guess `$` methods: for example there is no `$.skill.list`. The session usage breakdown carries `skillFrontmatter` (see `ContextSkill`) and is fetched by the Context tab.
-3. If the tab keeps new state, add its keys under `PluginState.paneline` in `types/index.d.ts`. Do not import anything there. The tab id is a plain string, so there is no tab type to extend.
+3. If the tab keeps new state, add its keys under `PluginState.vane` in `types/index.d.ts`. Do not import anything there. The tab id is a plain string, so there is no tab type to extend.
 4. Write the body in `hooks/<name>-draw.tsx`:
    - Export a view type, for example `SkillsView`, and a function `<name>Tab(ui: Ui, view: <Name>View): RenderElement`.
    - Take `Box`, `Text` and `Button` from `ui`. Use `paneRow` and the helpers from `pane-kit.tsx`. Colours are theme keys from `palette.ts` only.

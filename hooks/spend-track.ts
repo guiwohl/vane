@@ -10,7 +10,7 @@ import {
   withSession,
 } from "./spend-model";
 
-const spendAtom = atom({ plugin: "paneline", key: "spend" } as const, emptySpend());
+const spendAtom = atom({ plugin: "vane", key: "spend" } as const, emptySpend());
 
 export function trackSpend(on: On): void {
   on("session.start", { isInteractive: true }, async ($, e, next) => {

@@ -3,6 +3,7 @@ export type Activity = {
   tool: string;
   target: string;
   ms: number;
+  endedAt?: number;
   isErrored: boolean;
   added: number;
   removed: number;
@@ -10,17 +11,28 @@ export type Activity = {
 
 export type AgentEdit = Activity & { agentId: string };
 
-export type GitChange = { target: string; added: number; removed: number; label: string };
-
 export type CallRecord = Activity & { agentId?: string; input: string; output: string };
 
 export type RunningCall = { callId: string; tool: string; target: string };
+
+export type StartedCall = RunningCall & { startedAt: number };
 
 export type TurnStats = { reads: number; commands: number; changedFiles: number };
 
 export type UsageSnap = {
   context: number | null;
   limits: { label: string; percent: number; resetsAt?: string }[];
+  tokens: number | null;
+  window: number | null;
+};
+
+export type SeriesRing = {
+  startedAt: number;
+  origin: number | null;
+  intervalMs: number;
+  tokens: number[];
+  cost: number[];
+  turns: number[];
 };
 
 export type PromptInfo = { model: string; effort: string | null; cwd: string };
@@ -74,34 +86,39 @@ export type SpendState = {
   agentMemories: Record<string, SpendMemory>;
 };
 
+export type RereadState = {
+  seen: { key: string; hash: string; told: boolean }[];
+  suppressed: number;
+};
+
 declare module "claude-code" {
   interface PluginState {
-    paneline: {
+    vane: {
       activity: Activity[];
       agentEdits: AgentEdit[];
-      gitChanges: GitChange[];
-      gitBranches: Record<string, string>;
       calls: CallRecord[];
       openCall: string | null;
-      running: RunningCall[];
+      running: StartedCall[];
       toolMs: StateFamily<number>;
       turnStats: StateFamily<TurnStats | null>;
-      totalMs: number;
-      activityCleared: { ids: string[]; totalMs: number };
-      filesCleared: string[];
-      agentsCleared: string[];
+      series: SeriesRing;
+      activityCleared: { ids: string[] };
+      reread: {
+        seen: { key: string; hash: string; told: boolean }[];
+        suppressed: number;
+      };
       usage: UsageSnap;
       tab: string;
-      filesFolded: Record<string, boolean>;
       mcpSeen: string[];
       mcpQueued: string[];
       mcpOpen: string[];
       launchFolder: string;
       skillUses: Record<string, number>;
+      commandUses: Record<string, number>;
       toolUses: Record<string, number>;
-      skillsStatsOpen: boolean;
       skillsExpanded: string[];
       agents: Record<string, AgentNode>;
+      openAgent: string | null;
       sessionUsd: number | null;
       spend: SpendState;
       promptInfo: PromptInfo;

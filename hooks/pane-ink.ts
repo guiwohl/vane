@@ -12,6 +12,7 @@ export type PaneInk = {
   ok: string;
   failed: string;
   alert: string;
+  onAlert: string | undefined;
   mix: Record<ToolKind, string>;
   hues: readonly string[];
   isRecoloured: boolean;
@@ -28,6 +29,7 @@ const themeInk: PaneInk = {
   ok: palette.ok,
   failed: palette.failed,
   alert: palette.alert,
+  onAlert: palette.button,
   mix: {
     Read: palette.tool,
     Edit: palette.ok,
@@ -61,6 +63,7 @@ const lightInk: PaneInk = {
   ok: "ansi256(22)",
   failed: "ansi256(124)",
   alert: "ansi256(94)",
+  onAlert: "ansi256(231)",
   mix: {
     Read: "ansi256(19)",
     Edit: "ansi256(22)",
@@ -94,6 +97,7 @@ const lightAnsiInk: PaneInk = {
   ok: "ansi256(22)",
   failed: "ansi256(88)",
   alert: "ansi256(58)",
+  onAlert: "ansi256(231)",
   mix: {
     Read: "ansi256(19)",
     Edit: "ansi256(22)",
@@ -127,6 +131,7 @@ const darkAnsiInk: PaneInk = {
   ok: "ansi256(157)",
   failed: "ansi256(224)",
   alert: "ansi256(227)",
+  onAlert: "ansi256(16)",
   mix: {
     Read: "ansi256(159)",
     Edit: "ansi256(157)",
@@ -159,6 +164,7 @@ const autoInk: PaneInk = {
   ok: TERMINAL_GREEN,
   failed: TERMINAL_RED,
   alert: TERMINAL_YELLOW,
+  onAlert: "ansi256(0)",
   mix: {
     Read: TERMINAL_BLUE,
     Edit: TERMINAL_GREEN,

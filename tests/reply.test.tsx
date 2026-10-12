@@ -287,7 +287,7 @@ function mountReply(
   { columns = TERMINAL_COLUMNS }: { columns?: number } = {},
 ) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text, isFirstOfReply: true },

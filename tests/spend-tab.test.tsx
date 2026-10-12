@@ -28,7 +28,6 @@ import {
   setSessionCost,
   startFreshSession,
   showSpend,
-  shownTabs,
   spacingOf,
   spendPane,
   totalsOf,
@@ -44,13 +43,11 @@ const ONE_BLANK_ABOVE_EACH = [1, 1, 1];
 const NO_BLANK_RUN_LONGER_THAN_ONE = 1;
 
 describe("spend tab layout", () => {
-  test("T1 the tab bar ends with Skills then Spend and Spend opens with the Where it went, Cache misses and Biggest tool results in context headings in that order", async ($, on) => {
+  test("T1 the tab bar ends with Setup then Spend and Spend opens with the Where it went, Cache misses and Biggest tool results in context headings in that order", async ($, on) => {
     worldOf(on, API_KEY);
     const pane = await openPane($);
-    const bar = await shownTabs(pane);
 
-    expect(bar.slice(-2)).toEqual(["Skills", "Spend"]);
-    expect(TABS.map((tab) => tab.label).slice(-2)).toEqual(["Skills", "Spend"]);
+    expect(TABS.map((tab) => tab.label).slice(-2)).toEqual(["Setup", "Spend"]);
     expect(TABS.at(-1)?.id).toBe("spend");
 
     await showSpend(pane);

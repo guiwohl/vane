@@ -2,8 +2,6 @@ import { describe, expect, mock, test } from "claude-code/testing";
 import type { On } from "claude-code";
 import type { Engine, Mounted } from "claude-code/testing";
 
-import { palette } from "../hooks/palette";
-
 type Pane = Mounted<"terminal", "Pane">;
 type Node = { type: string; props?: Record<string, unknown>; children?: unknown[] };
 type Line = { text: string; outerTexts: Node[]; hasButton: boolean };
@@ -14,7 +12,6 @@ const WIDE_COLUMNS = 100;
 const LONG_COMMAND = `echo ${"x".repeat(200)}`;
 const BASH_OUTPUT = "first output line\nsecond output line";
 const KEPT = 50;
-const TIMELINE = 15;
 const MANY = 60;
 
 describe("Activity rows", () => {
@@ -35,15 +32,13 @@ describe("Activity rows", () => {
     });
   }
 
-  test("A2 the timeline and the tool-mix legend show Grep, Edit and Agent calls", async ($, on) => {
+  test("A2 the tool-mix legend counts Search, Edit and Agent calls", async ($, on) => {
     worldOf(on);
     await runMixedCalls($);
 
     const pane = await mountPane($, WIDE_COLUMNS);
 
     const lines = await bodyLines(pane);
-    for (const tool of ["Grep", "Edit", "Agent"])
-      expect(lines.some((line) => line.hasButton && line.text.includes(tool))).toBe(true);
     for (const group of ["Search 1", "Edit 1", "Agent 1"])
       expect(lines.some((line) => line.text.includes(group))).toBe(true);
     const bar = (await pane.findAll({ type: "Text" })).filter((text) =>
@@ -64,40 +59,7 @@ describe("Activity rows", () => {
     expect(plain.map((text) => ownText(text as unknown as Node))).toEqual([]);
   });
 
-  test("A4 a failed call is listed under Failed in the failed color", async ($, on) => {
-    worldOf(on);
-    await runMixedCalls($);
-
-    const pane = await mountPane($, WIDE_COLUMNS);
-
-    const lines = await bodyLines(pane);
-    expect(lines.some((line) => line.text.startsWith("Failed"))).toBe(true);
-    const marks = await pane.findAll({ type: "Text", text: "✗" });
-    expect(marks.length).toBe(4);
-    expect(marks.every((mark) => mark.props.color === palette.failed)).toBe(true);
-  });
-});
-
-describe("call details", () => {
-  test("A5 pressing a Bash row shows its command and output, back returns to the list", async ($, on) => {
-    worldOf(on);
-    await $.tool.call({ tool: "Bash", command: "ls -la", tool_use_id: "bash-1" } as never);
-    const pane = await mountPane($, WIDE_COLUMNS);
-
-    await pane.press({ key: "call-bash-1" });
-    const details = (await bodyLines(pane)).map((line) => line.text);
-
-    expect(details.some((text) => text.includes("ls -la"))).toBe(true);
-    expect(details).toContain("first output line");
-    expect(details).toContain("second output line");
-    expect(details.some((text) => text.startsWith("Timeline"))).toBe(false);
-
-    await pane.press({ key: "back" });
-    const list = (await bodyLines(pane)).map((line) => line.text);
-    expect(list.some((text) => text.startsWith("Timeline"))).toBe(true);
-  });
-
-  test("A6 sixty calls keep only the last fifty and the timeline shows fifteen", async ($, on) => {
+  test("A6 sixty calls keep only the last fifty", async ($, on) => {
     worldOf(on);
     for (let i = 0; i < MANY; i++)
       await $.tool.call({
@@ -105,15 +67,7 @@ describe("call details", () => {
         file_path: `/work/file${i}.ts`,
         tool_use_id: `read-${i}`,
       } as never);
-    const pane = await mountPane($, WIDE_COLUMNS);
 
-    const rows = (await pane.findAll({ type: "Button" })).filter((button) =>
-      String(button.key).startsWith("call-"),
-    );
-
-    expect(rows.length).toBe(TIMELINE);
-    expect(rows[0]?.key).toBe(`call-read-${MANY - 1}`);
-    await $.tool.call({ tool: "Bash", command: "true", tool_use_id: "last" } as never);
     expect(callsKept).toBe(KEPT);
   });
 });
@@ -125,7 +79,7 @@ function worldOf(on: On): void {
   mock.clock(on);
   on("state.set", (_$, e, next) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (e.plugin === "paneline" && e.key === "calls") callsKept = (e.value as unknown[]).length;
+    if (e.plugin === "vane" && e.key === "calls") callsKept = (e.value as unknown[]).length;
     return next(e);
   });
   on("classic.SessionStart", () => ({}));
@@ -161,7 +115,7 @@ async function runMixedCalls($: Engine): Promise<void> {
 
 function mountPane($: Engine, columns: number): Promise<Pane> {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

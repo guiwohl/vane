@@ -6,9 +6,9 @@ import type { UseCounts } from "./use-counts";
 
 export const SKILL_USES_KEY = "skillUses";
 
-const launchFolderAtom = atom({ plugin: "paneline", key: "launchFolder" } as const, "");
+const launchFolderAtom = atom({ plugin: "vane", key: "launchFolder" } as const, "");
 const skillUsesAtom = atom(
-  { plugin: "paneline", key: "skillUses" } as const,
+  { plugin: "vane", key: "skillUses" } as const,
   {} as Record<string, number>,
 );
 

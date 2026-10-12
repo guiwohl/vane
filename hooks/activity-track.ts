@@ -7,8 +7,9 @@ import type {
   TurnCompleteInput,
 } from "claude-code";
 
-import type { Activity, AgentEdit, CallRecord, RunningCall, TurnStats } from "../types";
+import type { Activity, AgentEdit, CallRecord, StartedCall, TurnStats } from "../types";
 import { callRecord } from "./activity-calls";
+import { emptyRing, recordSample } from "./series-ring";
 import {
   afterMainTurn,
   emptySpend,
@@ -24,15 +25,15 @@ const KEPT_ACTIVITY = 400;
 const KEPT_AGENT_EDITS = 400;
 export const UNMEASURED_MS = -1;
 
-const activityAtom = atom({ plugin: "paneline", key: "activity" } as const, []);
-const agentEditsAtom = atom({ plugin: "paneline", key: "agentEdits" } as const, [] as AgentEdit[]);
-const totalMsAtom = atom({ plugin: "paneline", key: "totalMs" } as const, 0);
-const callsAtom = atom({ plugin: "paneline", key: "calls" } as const, [] as CallRecord[]);
-const runningAtom = atom({ plugin: "paneline", key: "running" } as const, [] as RunningCall[]);
-const toolMsAtom = atom({ plugin: "paneline", key: "toolMs" } as const, UNMEASURED_MS);
-const turnStatsAtom = atom({ plugin: "paneline", key: "turnStats" } as const, null);
+const activityAtom = atom({ plugin: "vane", key: "activity" } as const, []);
+const agentEditsAtom = atom({ plugin: "vane", key: "agentEdits" } as const, [] as AgentEdit[]);
+const seriesAtom = atom({ plugin: "vane", key: "series" } as const, emptyRing());
+const callsAtom = atom({ plugin: "vane", key: "calls" } as const, [] as CallRecord[]);
+const runningAtom = atom({ plugin: "vane", key: "running" } as const, [] as StartedCall[]);
+const toolMsAtom = atom({ plugin: "vane", key: "toolMs" } as const, UNMEASURED_MS);
+const turnStatsAtom = atom({ plugin: "vane", key: "turnStats" } as const, null);
 
-const spendAtom = atom({ plugin: "paneline", key: "spend" } as const, emptySpend());
+const spendAtom = atom({ plugin: "vane", key: "spend" } as const, emptySpend());
 
 let turnActivity: Activity[] = [];
 
@@ -44,8 +45,9 @@ export function trackActivity(on: On): void {
 
   on("tool.call", async ($, e, next) => {
     const startedAt = await $.clock.now();
-    const ran = await (e.agentId === undefined ? runningMainCall($, e, next) : next(e));
-    const entry = activityOf(e, ran, (await $.clock.now()) - startedAt);
+    const ran = await (e.agentId === undefined ? runningMainCall($, e, startedAt, next) : next(e));
+    const endedAt = await $.clock.now();
+    const entry = activityOf(e, ran, endedAt - startedAt, endedAt);
     const recorded = update($, callsAtom, (list) =>
       [...list, callRecord(e, entry, ran, e.agentId)].slice(-KEPT_CALLS),
     );
@@ -62,10 +64,17 @@ export function trackActivity(on: On): void {
     if (e.agentId !== undefined) return next(e);
     const stats = turnStats(turnActivity);
     await update($, memberOf(turnStatsAtom, { requestId: String(e.durationMs) }), () => stats);
-    await update($, totalMsAtom, (total) => total + e.durationMs);
+    await recordTurn($);
     await recordMainSpend($, e);
     return next(e);
   });
+}
+
+async function recordTurn($: EngineInterface): Promise<void> {
+  const [at, usage] = await Promise.all([$.clock.now(), $.session.usage()]);
+  await update($, seriesAtom, (ring) =>
+    recordSample(ring, { at, startedAt: usage.startedAt, turns: 1 }),
+  );
 }
 
 async function recordRent(
@@ -101,11 +110,12 @@ async function recordMainSpend($: EngineInterface, e: TurnCompleteInput): Promis
 function runningMainCall(
   $: EngineInterface,
   e: ToolCallInput,
+  startedAt: number,
   next: (e: ToolCallInput) => Promise<ToolCallResult>,
 ): Promise<ToolCallResult> {
   return update($, runningAtom, (list) => [
     ...list,
-    { callId: e.tool_use_id, tool: e.tool, target: targetOf(e) },
+    { callId: e.tool_use_id, tool: e.tool, target: targetOf(e), startedAt },
   ]).then(() =>
     next(e).finally(() =>
       update($, runningAtom, (list) => list.filter((one) => one.callId !== e.tool_use_id)),
@@ -136,6 +146,7 @@ function activityOf(
   call: { tool: string; tool_use_id: string },
   ran: ToolCallResult,
   ms: number,
+  endedAt: number,
 ): Activity {
   const patched = diffstat(ran.result);
   const diff =
@@ -147,6 +158,7 @@ function activityOf(
     tool: call.tool,
     target: targetOf(call),
     ms,
+    endedAt,
     isErrored: ran.deny !== undefined || ran.isError === true,
     added: diff.added,
     removed: diff.removed,

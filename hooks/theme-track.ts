@@ -1,7 +1,7 @@
 import { atom, read, update } from "claude-code";
 import type { EngineInterface, On } from "claude-code";
 
-const themeAtom = atom({ plugin: "paneline", key: "theme" } as const, "dark");
+const themeAtom = atom({ plugin: "vane", key: "theme" } as const, "dark");
 
 const THEME_ROW = "theme";
 const THEME_WRITE_READS = 40;

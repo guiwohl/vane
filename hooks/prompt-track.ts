@@ -7,12 +7,12 @@ import { emptySpend } from "./spend-model";
 const COLOR_ENTRY = '"type":"agent-color"';
 
 const promptInfoAtom = atom(
-  { plugin: "paneline", key: "promptInfo" } as const,
+  { plugin: "vane", key: "promptInfo" } as const,
   { model: "", effort: null, cwd: "" } as PromptInfo,
 );
-const spendAtom = atom({ plugin: "paneline", key: "spend" } as const, emptySpend());
-const sessionColorAtom = atom({ plugin: "paneline", key: "sessionColor" } as const, "default");
-const transcriptPathAtom = atom({ plugin: "paneline", key: "transcriptPath" } as const, "");
+const spendAtom = atom({ plugin: "vane", key: "spend" } as const, emptySpend());
+const sessionColorAtom = atom({ plugin: "vane", key: "sessionColor" } as const, "default");
+const transcriptPathAtom = atom({ plugin: "vane", key: "transcriptPath" } as const, "");
 
 export function trackPromptInfo(on: On): void {
   on("session.start", { isInteractive: true }, async ($, e, next) => {

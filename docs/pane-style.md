@@ -1,6 +1,6 @@
 # Pane style
 
-The house look of the side pane tabs. It is taken from the tabs the owner accepted: Activity, Files, Agents, Context. A new tab copies them. The owner judges the look, not the tests.
+The house look of the side pane tabs. It is taken from the tabs the owner accepted: Overview, Agents, Context. A new tab copies them. The owner judges the look, not the tests.
 
 ## Frame (the shell owns it)
 
@@ -62,7 +62,7 @@ council
 ## Counts
 
 - Always `${n} ${plural(noun, n)}`. Numbers via `formatTokens` and `formatDuration`.
-- A per-item count goes in `muted`, right-aligned in its own fixed column (MCP "15 tools", Activity durations, Agents spend). Totals go in one summary row at the top, parts joined by ` · ` in `muted` (MCP "3 servers", Files "2 files changed", the Activity chip line).
+- A per-item count goes in `muted`, right-aligned in its own fixed column (MCP "15 tools", Activity durations, Agents spend). Totals go in one summary row at the top, parts joined by ` · ` in `muted` (MCP "3 servers", the Overview summary line).
 - Changes are `+N` in `ok` and `-N` in `failed`, never one colour.
 
 ## Click targets
@@ -74,7 +74,7 @@ council
 
 ## Expand and collapse
 
-- A foldable row starts with `▾` (open) or `▸` (folded) and is one `Button` with the name (Files folders). A folded row shows its summed counts on the right.
+- A foldable row starts with `▾` (open) or `▸` (folded) and is one `Button` with the name (MCP servers). A folded row shows its summed counts on the right.
 - An open item shows its extra rows under it, indented 2 cells, in `muted`, one line each, truncated. Long text that needs more opens a detail view with `[ back ]` (Activity call details). Exception, an owner decision: an item whose text must open in full (a Skills description) shows it as `muted` rows, wrapped and indented 2 cells.
 
 ## Empty state
@@ -90,7 +90,7 @@ council
 
 ## Before you call a tab done
 
-1. Live check (skill `live-check`): capture the new tab next to an accepted one (Files or Agents) in the dark and light themes, with the default colour and after `/color red`, at about 60 and about 120 columns.
+1. Live check (skill `live-check`): capture the new tab next to an accepted one (Overview or Agents) in the dark and light themes, with the default colour and after `/color red`, at about 60 and about 120 columns.
 2. Put the screenshots side by side and compare: heading colour and weight, rule, blank rows, one row per item, dim secondary text, right column, indentation.
 3. Look for a `38;2` code in an ANSI theme: a hardcoded colour leaked.
 4. Show the screenshots to the owner. He judges the look; green tests do not make a tab done.

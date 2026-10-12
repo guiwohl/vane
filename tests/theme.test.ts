@@ -216,7 +216,7 @@ function subagentKeyOf(name: string): string {
 
 function mountReply($: Engine, text: string) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text, isFirstOfReply: true },

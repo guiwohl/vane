@@ -102,24 +102,12 @@ describe("the drawn tabs use the theme's pane colours", () => {
     expect(colours).not.toContain(palette.muted);
   });
 
-  test("PT5 under dark the Activity tool names keep the permission colour", async ($, on) => {
-    paneWorld(on, "dark");
-    await $.session.start({ cwd: CWD, surface: "terminal", isInteractive: true });
-
-    const tree = await paneOnTab($, "Activity");
-
-    const readColours = collect(tree, "Text")
-      .filter((node) => textOf(node).trim() === "Read")
-      .map((node) => node.props?.color);
-    expect(readColours).toContain(palette.tool);
-  });
-
   for (const theme of ["light-ansi", "dark-ansi", "light", "dark"]) {
-    test(`PT6 under ${theme} the tab bar and file folders stay dimmed buttons`, async ($, on) => {
+    test(`PT6 under ${theme} every button of the Agents tab stays dimmed`, async ($, on) => {
       paneWorld(on, theme);
       await $.session.start({ cwd: CWD, surface: "terminal", isInteractive: true });
 
-      const tree = await paneOnTab($, "Files");
+      const tree = await paneOnTab($, "Agents");
 
       const undimmed = collect(tree, "Button").filter((button) => button.props?.dimColor !== true);
       expect(undimmed.map((button) => button.props?.label)).toEqual([]);
@@ -127,7 +115,7 @@ describe("the drawn tabs use the theme's pane colours", () => {
   }
 
   for (const theme of ["light-ansi", "dark-ansi", "light", "light-daltonized"]) {
-    test(`PT7 under ${theme} the Context grid draws no engine category colour`, async ($, on) => {
+    test(`PT7 under ${theme} the Context bar and legend draw no engine category colour`, async ($, on) => {
       paneWorld(on, theme);
       await $.session.start({ cwd: CWD, surface: "terminal", isInteractive: true });
 
@@ -135,7 +123,7 @@ describe("the drawn tabs use the theme's pane colours", () => {
 
       const ink = inkFor(theme);
       const allowed = new Set<unknown>([...ink.hues, ink.muted, palette.text]);
-      const glyphs = collect(tree, "Text").filter((node) => /^[⛁⛀⛶⛝]\s?$/u.test(ownText(node)));
+      const glyphs = collect(tree, "Text").filter((node) => /^[█░▚■–]+\s?$/u.test(ownText(node)));
       expect(glyphs.length).toBeGreaterThan(0);
       expect(glyphs.filter((node) => !allowed.has(node.props?.color))).toEqual([]);
     });
@@ -242,7 +230,7 @@ async function paneOnTab($: Engine, label: string): Promise<Node> {
     await $.tool.call({ ...call, tool_use_id: `pt-${i}` } as never);
   await clock.advance(FLUSH_MS);
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

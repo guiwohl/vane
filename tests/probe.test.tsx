@@ -37,7 +37,7 @@ describe("speed probe", () => {
   );
 
   test(
-    "A1b with the probe off, the reply is drawn in the paneline style",
+    "A1b with the probe off, the reply is drawn in the vane style",
     { options: { probe: false } },
     async ($) => {
       const reply = await mountReply($);
@@ -90,7 +90,7 @@ function recordLogs(on: On): LoggedLine[] {
 
 function mountReply($: Engine): Promise<Reply> {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text: "Hello world", isFirstOfReply: true },

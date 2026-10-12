@@ -13,37 +13,17 @@ const BLUE = accentOf("blue");
 const DEFAULT_GREY = ENGINE_DEFAULT_GREY;
 const TITLE_CHIP_TEXT = "clawd_background";
 
-describe("chips follow the session colour", () => {
-  test("K1 the chips take the colour recorded in the transcript", async ($, on) => {
-    const world = worldOf(on, ["red"]);
-    await $.session.start(SESSION_START);
-    await $.classic.Stop(stop());
-    await world.settle();
-
-    expect(chipBackgrounds(await lastRow($))).toEqual([RED, RED, RED]);
-  });
-
+describe("the pane tab tracks the session colour", () => {
   test("K1b a half-written last entry keeps the previous colour", async ($, on) => {
     const world = worldOf(on, ["red", '{"type":"agent-color","agentCo']);
     await $.session.start(SESSION_START);
     await $.classic.Stop(stop());
     await world.settle();
 
-    expect(chipBackgrounds(await lastRow($))).toEqual([RED, RED, RED]);
+    expect((await selectedTabPaint($)).background).toBe(RED);
   });
 
-  test("K2 with no colour recorded the chips are plain grey text", async ($, on) => {
-    const world = worldOf(on, []);
-    await $.session.start(SESSION_START);
-    await $.classic.Stop(stop());
-    await world.settle();
-
-    const row = await lastRow($);
-    expect(chipBackgrounds(row)).toEqual([undefined, undefined, undefined]);
-    expect(chipTextColors(row)).toEqual([DEFAULT_GREY, DEFAULT_GREY, DEFAULT_GREY]);
-  });
-
-  test("K3 a colour change shows on the chips at the next event", async ($, on) => {
+  test("K3 a colour change shows on the tab at the next event", async ($, on) => {
     const world = worldOf(on, ["red"]);
     await $.session.start(SESSION_START);
     await $.classic.Stop(stop());
@@ -53,37 +33,19 @@ describe("chips follow the session colour", () => {
     await $.classic.Stop(stop());
     await world.settle();
 
-    expect(chipBackgrounds(await lastRow($))[0]).toBe(BLUE);
+    expect((await selectedTabPaint($)).background).toBe(BLUE);
   });
 
-  test("K4 the last colour entry wins and default returns plain grey text", async ($, on) => {
+  test("K4 the last colour entry wins and default returns the engine grey", async ($, on) => {
     const world = worldOf(on, ["red", "default"]);
     await $.session.start(SESSION_START);
     await $.classic.Stop(stop());
     await world.settle();
 
-    const row = await lastRow($);
-    expect(chipBackgrounds(row)[0]).toBeUndefined();
-    expect(chipTextColors(row)[0]).toBe(DEFAULT_GREY);
+    expect((await selectedTabPaint($)).background).toBe(DEFAULT_GREY);
   });
 
-  test("K5 chip text is the title chip text colour on red and still on yellow after a change", async ($, on) => {
-    const world = worldOf(on, ["red"]);
-    await $.session.start(SESSION_START);
-    await $.classic.Stop(stop());
-    await world.settle();
-
-    world.entries.push("yellow");
-    await $.classic.Stop(stop());
-    await world.settle();
-    expect(chipTextColors(await lastRow($))).toEqual([
-      TITLE_CHIP_TEXT,
-      TITLE_CHIP_TEXT,
-      TITLE_CHIP_TEXT,
-    ]);
-  });
-
-  test("K7 /color repaints the chips at once, without a prompt or a turn end", async ($, on) => {
+  test("K7 /color repaints the tab at once, without a prompt or a turn end", async ($, on) => {
     const world = worldOf(on, ["red"]);
     await $.session.start(SESSION_START);
     await $.classic.Stop(stop());
@@ -98,7 +60,7 @@ describe("chips follow the session colour", () => {
     });
     await world.settle();
 
-    expect(chipBackgrounds(await lastRow($))[0]).toBe(BLUE);
+    expect((await selectedTabPaint($)).background).toBe(BLUE);
   });
 });
 
@@ -135,7 +97,7 @@ describe("the side pane", () => {
     worldOf(on, []);
     await $.session.start(SESSION_START);
     const pane = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "Pane",
       requestId: "session",
@@ -175,10 +137,6 @@ function worldOf(on: On, initial: string[]): { entries: string[]; settle: () => 
   on("classic.Stop", () => ({}));
   on("command.run", () => ({}));
   on("classic.PostToolUse", () => ({}));
-  on("ui.render", { component: "AbovePrompt" }, ($, e) => {
-    const { Text } = $.ui.resolve(e);
-    return <Text>engine row</Text>;
-  });
   on(
     "process.run",
     () =>
@@ -207,43 +165,9 @@ function stop(): Parameters<Engine["classic"]["Stop"]>[0] {
   };
 }
 
-async function lastRow($: Engine): Promise<Drawn> {
-  const band = await $.ui.mount({
-    plugin: "paneline",
-    surface: "terminal",
-    component: "AbovePrompt",
-    props: {
-      hasSurvey: false,
-      isWorking: false,
-      maxRows: 10,
-      bodyColumns: 100,
-      scroll: { offset: 0, bodyRows: 10 },
-      view: {},
-    },
-    viewport: { columns: 100, rows: 40 },
-  });
-  const children = ((await band.drawn()) as Drawn).children ?? [];
-  return children.at(-1) as Drawn;
-}
-
-function chipBackgrounds(row: Drawn): unknown[] {
-  return chips(row).map((chip) => chip.props?.backgroundColor);
-}
-
-function chipTextColors(row: Drawn): unknown[] {
-  return chips(row).map((chip) => chip.props?.color);
-}
-
-function chips(node: Drawn): Drawn[] {
-  if (node.props?.color !== undefined) return [node];
-  return (node.children ?? []).flatMap((child) =>
-    typeof child === "string" ? [] : chips(child as Drawn),
-  );
-}
-
 async function selectedTabPaint($: Engine): Promise<{ background: unknown; text: unknown }> {
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",
@@ -257,6 +181,6 @@ async function selectedTabPaint($: Engine): Promise<{ background: unknown; text:
     },
     viewport: { columns: 60, rows: 40 },
   });
-  const [label] = await pane.findAll({ type: "Text", text: "Activity" });
+  const [label] = await pane.findAll({ type: "Text", text: "Overview" });
   return { background: label?.props.backgroundColor, text: label?.props.color };
 }

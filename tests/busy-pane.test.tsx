@@ -12,9 +12,9 @@ const SETTLE_TICKS = 5;
 const CONTEXT_TOKENS = 100_000;
 
 describe("pane under a burst of measures", () => {
-  test("B1 on the MCP tab a burst of context measures asks for no new breakdown", async ($, on) => {
+  test("B1 on the Agents tab a burst of context measures asks for no new breakdown", async ($, on) => {
     const world = worldOf(on);
-    const pane = await paneOnTab($, "MCP");
+    const pane = await paneOnTab($, "Agents");
     const askedBefore = world.breakdownCalls;
 
     for (let beat = 0; beat < BURST; beat++) await measureContext($, { percent: 40 + beat });
@@ -90,6 +90,7 @@ function worldOf(on: On): World {
   on("session.measure", (_$, e) => ({ changed: e.changed }));
   on("session.model", () => ({ value: "opus" }));
   on("session.cwd", () => ({ value: "/work" }));
+  on("agent.list", () => ({ value: [] }));
   on("ui.render", { component: "Pane" }, ($, e) => {
     const { Text } = $.ui.resolve(e);
     return <Text>engine pane</Text>;
@@ -107,7 +108,7 @@ function measureContext($: Engine, fill: { tokens?: number; percent?: number }):
 
 function mountPane($: Engine): Promise<Pane> {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

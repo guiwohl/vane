@@ -1,9 +1,9 @@
 {
-  "name": "paneline",
-  "version": "0.3.2",
+  "name": "vane",
+  "version": "0.4.0",
   "description": "Claude Code mod (plugin) that adds a side pane with Activity, Files, Agents, Context, MCP, Skills and Spend tabs, a status line above the prompt, a restyled chat, Mermaid diagrams in the terminal, tables, and code and diff panels. Colours follow both /color and the /theme (dark, light and others).",
   "author": {
-    "name": "Mark"
+    "name": "Guilherme Wohl"
   },
   "license": "MIT",
   "keywords": [
@@ -22,8 +22,6 @@
     "mcp",
     "context-window",
     "token-usage",
-    "file-tree",
-    "git-branches",
     "mermaid",
     "tables",
     "diff",
@@ -42,6 +40,6 @@
       "default": false
     }
   },
-  "repository": "https://github.com/markneonin/paneline",
-  "homepage": "https://github.com/markneonin/paneline"
+  "repository": "https://github.com/guiwohl/vane",
+  "homepage": "https://github.com/guiwohl/vane"
 }

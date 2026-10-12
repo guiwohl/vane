@@ -1,6 +1,6 @@
 ---
 name: write-test
-description: Use when writing or changing a test for paneline hooks or draw functions.
+description: Use when writing or changing a test for vane hooks or draw functions.
 ---
 
 # Write a test
@@ -25,7 +25,7 @@ Copy the `worldOf(on)` helper from the nearest test file, for example `tests/mcp
 ## Mount and act
 
 ```
-const pane = await $.ui.mount({ plugin: "paneline", surface: "terminal", component: "Pane",
+const pane = await $.ui.mount({ plugin: "vane", surface: "terminal", component: "Pane",
   requestId: "session", props: { title: "Session", isFocused: false, bodyColumns: 60,
   placement: "dock", scroll: { offset: 0, bodyRows: 40 }, view: {} },
   viewport: { columns: 60, rows: 40 } })

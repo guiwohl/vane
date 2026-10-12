@@ -9,7 +9,7 @@ type Row = { cells: number; text: string };
 
 const NARROW = 80;
 const WIDE = 200;
-const BAND_SUFFIX_CELLS = 2;
+const BAND_PREFIX_CELLS = 2;
 const TEXT_COLUMN_CELLS = 2;
 const RIGHT_GUTTER_CELLS = 3;
 const FLUSH_RIGHT = "flex-end";
@@ -66,26 +66,27 @@ describe("Claude rows are flush with the left gutter", () => {
   }
 });
 
-describe("the owner prompt is flush right", () => {
+describe("the owner prompt is flush left", () => {
   for (const columns of [NARROW, WIDE]) {
-    test(`L7 at ${columns} columns the USER header ends with the label and the block spans the content width`, async ($) => {
+    test(`L7 at ${columns} columns the USER header starts with the label and the block spans the content width`, async ($) => {
       const root = await rootOf(await mountUser($, "hello", columns));
 
       expect(root.props?.marginLeft).toBe(TEXT_COLUMN_CELLS);
       expect(root.props?.width).toBe(innerWidth(columns));
-      expect(textOf(childTrees(root)[0]!).endsWith("USER")).toBe(true);
+      expect(textOf(childTrees(root)[0]!).startsWith("USER")).toBe(true);
     });
 
-    test(`L5 at ${columns} columns every line of a long prompt is a full-width row ending at the right gutter`, async ($) => {
+    test(`L5 at ${columns} columns every line of a long prompt is a full-width left-aligned row opening with the bar`, async ($) => {
       const root = await rootOf(await mountUser($, LONG_PARAGRAPH, columns));
 
-      const rows = flushRightRows(root);
+      const rows = bandBoxes(root);
 
       expect(rows.length).toBeGreaterThan(1);
       expect(rows.map((row) => row.props?.width)).toEqual(
         Array(rows.length).fill(innerWidth(columns)),
       );
-      expect(rows.every((row) => textOf(row).endsWith("▌"))).toBe(true);
+      expect(rows.every((row) => textOf(row).startsWith("▌ "))).toBe(true);
+      expect(flushRightRows(root)).toEqual([]);
     });
   }
 });
@@ -97,12 +98,12 @@ describe("pasted content tags", () => {
   ];
 
   for (const wrapped of WRAPPED) {
-    test("P1 a prompt wrapped in pasted_content tags shows only its inner text, flush right", async ($) => {
+    test("P1 a prompt wrapped in pasted_content tags shows only its inner text, flush left", async ($) => {
       const root = await rootOf(await mountUser($, wrapped, NARROW));
 
-      const rows = flushRightRows(root);
+      const rows = bandBoxes(root);
 
-      expect(rows.map((row) => textOf(row))).toEqual(["first line ▌", "second line ▌"]);
+      expect(rows.map((row) => textOf(row))).toEqual(["▌ first line", "▌ second line"]);
       expect(textOf(root)).not.toContain("pasted_content");
     });
   }
@@ -157,7 +158,7 @@ describe("control characters in the prompt", () => {
 
 function mountUser($: Engine, text: string, columns: number) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "UserMessage",
     props: { text, origin: { kind: "composer" }, isExpanded: false },
@@ -169,7 +170,7 @@ async function claudeRoots($: Engine, columns: number): Promise<Tree[]> {
   const viewport = { columns, rows: 24 };
   const reply = await mountReply($, "Hello world", columns);
   const group = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolGroup",
     props: {
@@ -189,7 +190,7 @@ async function claudeRoots($: Engine, columns: number): Promise<Tree[]> {
     viewport,
   });
   const call = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolUse",
     props: {
@@ -203,7 +204,7 @@ async function claudeRoots($: Engine, columns: number): Promise<Tree[]> {
     viewport,
   });
   const footer = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "TurnDuration",
     props: { word: "Baked", durationMs: 5000 },
@@ -214,7 +215,7 @@ async function claudeRoots($: Engine, columns: number): Promise<Tree[]> {
 
 function mountReply($: Engine, text: string, columns: number) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text, isFirstOfReply: true },
@@ -226,7 +227,7 @@ async function bandRows($: Engine, text: string, columns: number): Promise<Row[]
   const user = await mountUser($, text, columns);
   return bandBoxes(await rootOf(user)).map((box) => ({
     cells: cellsOf(textOf(box)),
-    text: textOf(box).slice(0, -BAND_SUFFIX_CELLS),
+    text: textOf(box).slice(BAND_PREFIX_CELLS),
   }));
 }
 

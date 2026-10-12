@@ -1,6 +1,6 @@
 ---
 name: live-check
-description: Use to see a paneline change working in a real Claude Code session, and to read the colours the screen shows.
+description: Use to see a vane change working in a real Claude Code session, and to read the colours the screen shows.
 ---
 
 # Live check
@@ -34,7 +34,7 @@ Steps:
    - Text: `tmux -L pl-check capture-pane -p -t main`
    - With colours: `tmux -L pl-check capture-pane -e -p -t main`. Colours show as escape codes, for example `38;2;R;G;B` for a truecolor foreground. The values depend on the theme.
 5. Drive it with `tmux -L pl-check send-keys -t main "/session" Enter`. Send a prompt to produce tool calls and replies. Tabs are clickable buttons: attach to the session in a real terminal with `tmux -L pl-check attach` and click.
-6. Switch the theme: send `/theme` and Enter to open the picker, move with the arrows (Auto, Dark, Light, Dark colorblind, Light colorblind, Dark ANSI, Light ANSI), then Enter. Capture again. Every paneline colour must change with the theme and nothing needs a reload. In an ANSI theme, a truecolor code (`38;2` or `48;2`) on screen means a hardcoded colour leaked.
+6. Switch the theme: send `/theme` and Enter to open the picker, move with the arrows (Auto, Dark, Light, Dark colorblind, Light colorblind, Dark ANSI, Light ANSI), then Enter. Capture again. Every vane colour must change with the theme and nothing needs a reload. In an ANSI theme, a truecolor code (`38;2` or `48;2`) on screen means a hardcoded colour leaked.
 7. Saving a file in the worktree reloads the hooks in the running session. Edit, wait, capture again.
 8. Headless alternative for checks that need no screen: `claude -p --setting-sources project --plugin-dir <worktree> "<prompt>"`.
 9. When done, stop only your server: `tmux -L pl-check kill-server`.

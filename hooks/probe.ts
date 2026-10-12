@@ -46,5 +46,5 @@ function logStats(
     ([component, stats]) =>
       `${component} calls=${stats.calls} totalMs=${stats.totalMs.toFixed(1)} maxMs=${stats.maxMs.toFixed(1)} ids=${stats.requestIds.size}`,
   );
-  $.ui.log(`paneline probe @${totalCalls}: ${rows.join(" | ")}`, { to: "debug" });
+  $.ui.log(`vane probe @${totalCalls}: ${rows.join(" | ")}`, { to: "debug" });
 }

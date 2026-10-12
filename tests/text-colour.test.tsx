@@ -2,7 +2,6 @@ import { describe, expect, mock, test } from "claude-code/testing";
 import type { On, SessionContextBreakdown } from "claude-code";
 import type { Engine, Mounted } from "claude-code/testing";
 
-import { inkFor } from "../hooks/pane-ink";
 import { categoryColors, palette } from "../hooks/palette";
 import { accentOf } from "../hooks/session-color";
 import { THEMES } from "./theme-rgb";
@@ -19,7 +18,7 @@ const COLUMNS = 100;
 const PANE_ROWS = 60;
 const FENCE = "```";
 const FLUSH_MS = 400;
-const TABS = ["Context", "Activity", "Files", "Agents", "MCP"];
+const TABS = ["Context", "Overview", "Agents", "Spend"];
 
 const ACCENT_NAMES = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"];
 const ACCENT_TEXT = "clawd_background";
@@ -96,28 +95,7 @@ describe("text carries an explicit theme colour", () => {
     });
   }
 
-  test("TC7 the MCP tab draws each server name as one undimmed button in a dark theme and the actions of an opened server dim under it", async ($, on) => {
-    paneWorld(on);
-    const pane = await openedPane($, "MCP");
-
-    await pane.press({ key: "docs" });
-
-    const tree = await pane.drawn();
-
-    const names = collect(tree, "Button").filter((node) =>
-      ["docs", "linear"].includes(String(node.props?.label)),
-    );
-    expect(names.map((node) => [node.props?.label, node.props?.dimColor])).toEqual([
-      ["docs", false],
-      ["linear", false],
-    ]);
-    const actions = collect(tree, "Button").filter((node) =>
-      ["reconnect", "disable"].includes(String(node.props?.label)),
-    );
-    expect(actions.map((node) => node.props?.dimColor)).toEqual([true, true]);
-  });
-
-  for (const tab of ["MCP", "Activity"]) {
+  for (const tab of ["Agents"]) {
     test(`TC7b the ${tab} tab draws its clickable name labels in full text colour, not dim, in a light theme`, async ($, on) => {
       paneWorld(on, "light");
       await $.session.start({ cwd: CWD, surface: "terminal", isInteractive: true });
@@ -130,99 +108,21 @@ describe("text carries an explicit theme colour", () => {
     });
   }
 
-  for (const theme of ["light", "light-ansi", "light-daltonized", "auto"]) {
-    test(`TC7c the MCP tab draws its server names not dim and its headings in the theme text colour under ${theme}, which may sit on a light fill`, async ($, on) => {
-      paneWorld(on, theme);
-      await $.session.start({ cwd: CWD, surface: "terminal", isInteractive: true });
-
-      const tree = await paneOnTab($, "MCP");
-
-      const names = collect(tree, "Button").filter((node) =>
-        ["docs", "linear"].includes(String(node.props?.label)),
-      );
-      expect(names.map((node) => [node.props?.label, node.props?.dimColor === true])).toEqual([
-        ["docs", false],
-        ["linear", false],
-      ]);
-      const colors = collect(tree, "Text")
-        .filter((node) => node.props?.bold === true)
-        .map((node) => node.props?.color);
-      expect(colors).toContain(inkFor(theme).text);
-      expect(colors).not.toContain(inkFor(theme).section);
-    });
-  }
-
-  test("TC8 pressing an MCP server name button opens its actions", async ($, on) => {
+  test("TC2 the status line draws no text in the terminal default foreground", async ($, on) => {
     paneWorld(on);
-    const pane = await openedPane($, "MCP");
-
-    await pane.press({ key: "linear" });
-
-    const labels = (await pane.findAll({ type: "Button" })).map((node) => node.props.label);
-    expect(labels).toContain("reconnect");
-  });
-
-  test("TC8b pressing an MCP server name button in a light theme opens its actions", async ($, on) => {
-    paneWorld(on, "light");
     await $.session.start({ cwd: CWD, surface: "terminal", isInteractive: true });
-    const pane = await openedPane($, "MCP");
-
-    await pane.press({ key: "linear" });
-
-    const labels = (await pane.findAll({ type: "Button" })).map((node) => node.props.label);
-    expect(labels).toContain("reconnect");
-  });
-
-  test("TC9 pressing an Activity call row label opens the call details", async ($, on) => {
-    paneWorld(on);
-    const pane = await openedPane($, "Activity");
-    const row = (await pane.findAll({ type: "Button" })).find(
-      (node) => node.props.label === "npm test",
-    );
-
-    expect(row?.key).toBe("call-tc-0");
-    await pane.press({ key: row?.key ?? "" });
-
-    const labels = (await pane.findAll({ type: "Button" })).map((node) => node.props.label);
-    expect(labels).toContain("back");
-  });
-
-  test("TC10 pressing a Files folder label folds the folder", async ($, on) => {
-    paneWorld(on);
-    const pane = await openedPane($, "Files");
-    const folder = (await pane.findAll({ type: "Button" })).find((node) =>
-      String(node.props.label).startsWith("▾"),
-    );
-
-    await pane.press({ key: folder?.key ?? "" });
-
-    const folded = (await pane.findAll({ type: "Button" })).filter((node) =>
-      String(node.props.label).startsWith("▸"),
-    );
-    expect(folded.length).toBeGreaterThan(0);
-  });
-
-  test("TC2 the status row draws no text in the terminal default foreground", async ($, on) => {
-    paneWorld(on);
-    const band = await $.ui.mount({
-      plugin: "paneline",
+    const line = await $.ui.mount({
+      plugin: "vane",
       surface: "terminal",
-      component: "AbovePrompt",
-      props: {
-        hasSurvey: false,
-        isWorking: false,
-        maxRows: 10,
-        bodyColumns: COLUMNS,
-        scroll: { offset: 0, bodyRows: 10 },
-        view: {},
-      },
+      component: "PromptHint",
+      props: { isDraft: false, isWorking: false, hint: "esc to interrupt" },
       viewport: { columns: COLUMNS, rows: 40 },
     });
 
-    const tree = (await band.drawn()) as Node;
+    const tree = (await line.drawn()) as Node;
 
+    expect(collect(tree, "Text").length).toBeGreaterThan(0);
     expect(uncolouredText(tree)).toEqual([]);
-    expect(subtleText(tree)).toEqual([]);
   });
 
   test("TC3 chat blocks draw no text in the terminal default foreground", async ($, on) => {
@@ -236,7 +136,7 @@ describe("text carries an explicit theme colour", () => {
       `${FENCE}mermaid\nflowchart TD\n  A[start] --> B[end]\n${FENCE}`,
     ].join("\n\n");
     const reply = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "AssistantMessage",
       props: { text, isFirstOfReply: true },
@@ -262,7 +162,7 @@ describe("text carries an explicit theme colour", () => {
       replaceAll: false,
     };
     const result = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "ToolResult",
       props: { tool_use_id: "tc4", tool: "Edit", output, isErrored: false },
@@ -375,10 +275,6 @@ function paneWorld(on: On, theme = "dark"): void {
     const { Text } = $.ui.resolve(e);
     return <Text color="text">engine pane</Text>;
   });
-  on("ui.render", { component: "AbovePrompt" }, ($, e) => {
-    const { Text } = $.ui.resolve(e);
-    return <Text color="text">engine row</Text>;
-  });
   on("ui.render", { component: "ToolResult" }, ($, e) => {
     const { Text } = $.ui.resolve(e);
     return <Text color="text">engine result</Text>;
@@ -415,7 +311,7 @@ async function paneOnTab($: Engine, label: string): Promise<Node> {
 async function openedPane($: Engine, label: string): Promise<Pane> {
   await runCalls($);
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

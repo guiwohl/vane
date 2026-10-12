@@ -1,5 +1,5 @@
 {
-  "name": "paneline",
+  "name": "vane",
   "private": true,
   "type": "module",
   "scripts": {
@@ -37,8 +37,6 @@
     "mcp",
     "context-window",
     "token-usage",
-    "file-tree",
-    "git-branches",
     "mermaid",
     "tables",
     "diff",
@@ -49,9 +47,9 @@
     "anthropic"
   ],
   "license": "MIT",
-  "author": "Mark Neonin",
+  "author": "Guilherme Wohl",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/markneonin/paneline.git"
+    "url": "git+https://github.com/guiwohl/vane.git"
   }
 }

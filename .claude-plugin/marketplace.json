@@ -1,12 +1,12 @@
 {
-  "name": "paneline",
-  "description": "paneline: a side pane and status line mod for Claude Code",
+  "name": "vane",
+  "description": "vane: a side pane and status line mod for Claude Code",
   "owner": {
-    "name": "Mark"
+    "name": "Guilherme Wohl"
   },
   "plugins": [
     {
-      "name": "paneline",
+      "name": "vane",
       "source": "./",
       "description": "Side pane with Activity, Files, Agents, Context, MCP, Skills and Spend tabs, a status line, a restyled chat and terminal Mermaid diagrams."
     }

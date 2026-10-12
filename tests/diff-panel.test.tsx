@@ -252,7 +252,7 @@ describe("diff panels", () => {
   test("DW7 an expanded call row draws the same window", async ($, on) => {
     await world($, on);
     const group = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "ToolGroup",
       props: {
@@ -275,7 +275,7 @@ describe("diff panels", () => {
     const output = editOutput(`${CWD}/a.ts`, [hunk(1, ["-a", "+b"])]);
 
     const ui = await $.ui.mount({
-      plugin: "paneline",
+      plugin: "vane",
       surface: "terminal",
       component: "ToolUse",
       props: {
@@ -392,7 +392,7 @@ async function draw(
   columns = 80,
 ): Promise<Node> {
   const ui = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolResult",
     props: { tool_use_id: id, tool, output, isErrored },

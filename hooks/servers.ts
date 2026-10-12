@@ -25,14 +25,6 @@ export function serversOf(tools: ContextMcpTool[]): Server[] {
 
 export type McpScope = "project" | "local" | "user" | "claudeai" | "dynamic";
 
-export const SCOPE_GROUPS: { scope: McpScope; heading: string }[] = [
-  { scope: "project", heading: "Project MCPs" },
-  { scope: "local", heading: "Local MCPs" },
-  { scope: "user", heading: "User MCPs" },
-  { scope: "claudeai", heading: "claude.ai" },
-  { scope: "dynamic", heading: "Built-in MCPs" },
-];
-
 export type ScopeIndex = Map<string, McpScope>;
 
 type McpServerMap = { mcpServers?: Record<string, unknown> };

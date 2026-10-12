@@ -12,5 +12,5 @@ Type your answer as chat text, with no file and no tools: one example of every e
 ```
 
 ```
-Create $TMPDIR/paneline-demo.ts with 20 lines, then edit 3 lines in it.
+Create $TMPDIR/vane-demo.ts with 20 lines, then edit 3 lines in it.
 ```

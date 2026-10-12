@@ -7,7 +7,7 @@ import type {
   UiPressArgument,
 } from "claude-code";
 
-import type { UsageSnap, PromptInfo } from "../types";
+import type { CallRecord, PromptInfo } from "../types";
 import { UNMEASURED_MS } from "./activity-track";
 import { footerRow, layoutOf, toolGroupRow, userBlock } from "./chat-draw";
 import type { ToolGroupView } from "./chat-draw";
@@ -23,31 +23,25 @@ import { replyView } from "./reply-draw";
 import type { Accent } from "./pane-kit";
 import { fillsFor } from "./palette";
 import type { Fills } from "./palette";
-import { metersOf, promptInfoRow } from "./prompt-info";
 import { PANE } from "./pane-tab";
 import { accentOf } from "./session-color";
-import { TABS } from "./tabs";
 
 const DIFF_TOOLS = new Set(["Edit", "Write"]);
 const TYPED = new Set(["composer", "bridge", "sdk"]);
 const MAX_PROMPT = 4000;
 const MAX_REPLY_CHARS = 60_000;
-const BAND_ROWS_WITH_SPACER = 2;
 type Copy = (text: string, press: UiPressArgument) => void;
 
-const usageAtom = atom(
-  { plugin: "paneline", key: "usage" } as const,
-  { context: null, limits: [] } as UsageSnap,
-);
 const promptInfoAtom = atom(
-  { plugin: "paneline", key: "promptInfo" } as const,
+  { plugin: "vane", key: "promptInfo" } as const,
   { model: "", effort: null, cwd: "" } as PromptInfo,
 );
-const sessionColorAtom = atom({ plugin: "paneline", key: "sessionColor" } as const, "default");
-const themeAtom = atom({ plugin: "paneline", key: "theme" } as const, "dark");
-const toolMsAtom = atom({ plugin: "paneline", key: "toolMs" } as const, UNMEASURED_MS);
-const turnStatsAtom = atom({ plugin: "paneline", key: "turnStats" } as const, null);
-const tabAtom = atom({ plugin: "paneline", key: "tab" } as const, "activity");
+const sessionColorAtom = atom({ plugin: "vane", key: "sessionColor" } as const, "default");
+const themeAtom = atom({ plugin: "vane", key: "theme" } as const, "dark");
+const toolMsAtom = atom({ plugin: "vane", key: "toolMs" } as const, UNMEASURED_MS);
+const turnStatsAtom = atom({ plugin: "vane", key: "turnStats" } as const, null);
+const callsAtom = atom({ plugin: "vane", key: "calls" } as const, [] as CallRecord[]);
+const openCallAtom = atom({ plugin: "vane", key: "openCall" } as const, null as string | null);
 
 type RenderEvent = { surface: string; viewport?: { columns: number } };
 
@@ -67,8 +61,21 @@ async function currentFills($: EngineInterface): Promise<Fills> {
   return fillsFor(await read($, themeAtom));
 }
 
-async function openSessionPane($: EngineInterface): Promise<void> {
-  await update($, tabAtom, () => TABS[0].id);
+async function callToOpen(
+  $: EngineInterface,
+  ids: (string | undefined)[],
+): Promise<string | undefined> {
+  const known = ids.filter((id): id is string => id !== undefined && id !== "");
+  const failed = new Set(
+    (await read($, callsAtom)).filter((call) => call.isErrored).map((call) => call.id),
+  );
+  return known.find((id) => failed.has(id)) ?? known.at(-1);
+}
+
+async function openCallDetail($: EngineInterface, ids: (string | undefined)[]): Promise<void> {
+  const callId = await callToOpen($, ids);
+  if (callId === undefined) return;
+  await update($, openCallAtom, () => callId);
   await $.ui.open({ id: PANE, title: "Session", closeOnEscape: true });
 }
 
@@ -87,7 +94,7 @@ async function toolRow(
     $.ui.resolve(e),
     { ...view, elapsedMs, accent, fills },
     layoutOf(columnsOf(e)),
-    () => void openSessionPane($),
+    () => void openCallDetail($, ids),
   );
 }
 
@@ -145,7 +152,7 @@ function changesOf({ tool, output }: FinishedCall): BashChanges | null {
 const columnsOf = (e: RenderEvent): number => e.viewport?.columns ?? 100;
 
 const RENDER_HINT_SECTION = {
-  id: "paneline:render-hint",
+  id: "vane:render-hint",
   scope: "session",
   text: [
     "Replies in this session are drawn as rich terminal graphics.",
@@ -232,28 +239,6 @@ export function renderChat(on: On): void {
       stats ?? undefined,
       layoutOf(columnsOf(e)),
       fills,
-    );
-  });
-
-  on("ui.render", { component: "AbovePrompt" }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e);
-    const [theirs, usage, info, home, color, nowMs] = await Promise.all([
-      next(e),
-      read($, usageAtom),
-      read($, promptInfoAtom),
-      $.env.get("HOME"),
-      read($, sessionColorAtom),
-      $.clock.now(),
-    ]);
-    const meters = metersOf(usage, nowMs);
-    const ui = $.ui.resolve(e);
-    const { Box } = ui;
-    return (
-      <Box flexDirection="column">
-        {e.props.maxRows >= BAND_ROWS_WITH_SPACER ? <Box height={1} /> : null}
-        {theirs}
-        {promptInfoRow(ui, info, home, columnsOf(e), color, meters)}
-      </Box>
     );
   });
 }

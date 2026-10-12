@@ -11,9 +11,9 @@ import { TABS } from "./tabs";
 
 const BODY_PADDING = 1;
 
-const sessionColorAtom = atom({ plugin: "paneline", key: "sessionColor" } as const, "default");
-const tabAtom = atom({ plugin: "paneline", key: "tab" } as const, "activity");
-const themeAtom = atom({ plugin: "paneline", key: "theme" } as const, "dark");
+const sessionColorAtom = atom({ plugin: "vane", key: "sessionColor" } as const, "default");
+const tabAtom = atom({ plugin: "vane", key: "tab" } as const, "activity");
+const themeAtom = atom({ plugin: "vane", key: "theme" } as const, "dark");
 
 export function registerSessionPane(on: On): void {
   on("ui.render", { component: "Pane", requestId: PANE }, async ($, e, next) => {
@@ -48,7 +48,8 @@ export function registerSessionPane(on: On): void {
 
 export function registerSessionCommand(on: On): void {
   on("session.start", { isInteractive: true }, async ($, e, next) => {
-    await $.command.register({ name: "session", description: "Open the Session side pane" });
+    await $.command.register({ name: "session", description: "Toggle the Session side pane" });
+    await $.command.register({ name: "hud", description: "Toggle the Session side pane" });
     void openPane($);
     return next(e);
   });
@@ -58,10 +59,9 @@ export function registerSessionCommand(on: On): void {
     return next(e);
   });
 
-  on("command.run", { command: "session" }, async ($) => {
+  on("command.run", { command: ["session", "hud"] }, async ($) => {
     try {
-      await update($, tabAtom, () => TABS[0].id);
-      await openPane($);
+      await togglePane($);
       return {};
     } catch (error) {
       const text = failureText(error);
@@ -69,6 +69,16 @@ export function registerSessionCommand(on: On): void {
       return { text };
     }
   });
+}
+
+async function togglePane($: EngineInterface): Promise<void> {
+  const open = (await $.ui.panes()).some((pane) => pane.id === PANE);
+  if (open) {
+    await $.ui.close({ id: PANE });
+    return;
+  }
+  await update($, tabAtom, () => TABS[0].id);
+  await openPane($);
 }
 
 async function openPane($: EngineInterface): Promise<void> {

@@ -1,13 +1,12 @@
-import type { ElementTable, RenderElement } from "claude-code";
+import type { ElementTable, RenderElement, SessionMessage } from "claude-code";
 
-import type { AgentNode, AgentTree } from "../types";
+import type { AgentNode, AgentTree, CallRecord } from "../types";
 import type { TreeRow } from "./agents-model";
-import { hasFinished, visibleRows } from "./agents-model";
-import { clearButton } from "./clear-kit";
+import { titleOf, visibleRows } from "./agents-model";
 import { formatDuration, formatTokens, shortModel } from "./format";
-import { bar, gapRow, header, paneRow, paneHeaderLook, statusDot } from "./pane-kit";
+import { agentTranscript } from "./agent-transcript";
+import { bar, gapRow, header, labelButton, paneHeaderLook, paneRow, statusDot } from "./pane-kit";
 import { paneInk } from "./pane-ink";
-import { TAB_BAR_ROWS } from "./tab-bar";
 import { guideBetween, guideUnder, treeGlyphs } from "./tree-glyphs";
 
 type Ui = ElementTable;
@@ -18,72 +17,55 @@ export type AgentsView = {
   sessionUsd: number | null;
   now: number;
   width: number;
-  height: number;
-  clear: () => void;
+  openAgentId: string | null;
+  messages: SessionMessage[];
+  calls: CallRecord[];
+  cwd: string;
+  openCallId: string | null;
+  openCall: (id: string) => void;
+  closeCall: () => void;
+  openAgent: (id: string) => void;
+  closeAgent: () => void;
 };
 
 type Shown = { row: TreeRow; prefix: string; spacer: string; continuation: string };
 
 type Spender = { node: AgentNode; tokens: number };
 
-type Plan = { rows: TreeRow[]; hiddenDone: number; spenders: Spender[] };
-
 const SPEND_LIMIT = 6;
 const SPEND_BAR_CELLS = 6;
-const MAIN_ROWS = 1;
-const RUNNING_CARD_ROWS = 3;
-const FINISHED_CARD_ROWS = 2;
-const SPACER_ROWS = 1;
-const BRANCH_ROWS = 1;
-const HIDDEN_DONE_ROWS = 1;
-const SPEND_HEADING_ROWS = 2;
 const DETAILS_INDENT = "  ";
 
 export function agentsTab(ui: Ui, view: AgentsView): RenderElement {
   const { Box, Text } = ui;
-  const plan = planOf(view);
+  const open = view.openAgentId === null ? undefined : view.agents[view.openAgentId];
+  if (open) {
+    return agentTranscript(ui, open, {
+      messages: view.messages,
+      calls: view.calls,
+      cwd: view.cwd,
+      width: view.width,
+      openCallId: view.openCallId,
+      openCall: view.openCall,
+      closeCall: view.closeCall,
+      close: view.closeAgent,
+    });
+  }
+  const rows = visibleRows(view.agents);
+  const spenders = rankedSpenders(view.agents).slice(0, SPEND_LIMIT);
   return (
     <Box flexDirection="column">
       {mainRow(ui, view)}
-      {plan.rows.length === 0 ? (
+      {rows.length === 0 ? (
         <Text color={paneInk().muted} wrap="truncate-end">
-          no subagents yet
+          no agents running
         </Text>
       ) : null}
-      {shownRows(plan.rows).map((shown) => agentCard(ui, shown, view))}
-      {plan.hiddenDone > 0 ? (
-        <Text color={paneInk().muted} wrap="truncate-end">
-          {`… ${plan.hiddenDone} more done`}
-        </Text>
-      ) : null}
-      {plan.spenders.length > 0 ? gapRow(ui, "gap-spend", " ", paneInk().rule) : null}
-      {spendSection(ui, plan.spenders, view)}
+      {shownRows(rows).map((shown) => agentCard(ui, shown, view))}
+      {spenders.length > 0 ? gapRow(ui, "gap-spend", " ", paneInk().rule) : null}
+      {spendSection(ui, spenders, view)}
     </Box>
   );
-}
-
-function planOf(view: AgentsView): Plan {
-  const spenders = rankedSpenders(view.agents).slice(0, SPEND_LIMIT);
-  const spendRows = spenders.length > 0 ? SPEND_HEADING_ROWS + spenders.length : 0;
-  const budget = view.height - TAB_BAR_ROWS - MAIN_ROWS - spendRows;
-  const active = visibleRows(view.agents, 0);
-  const total = visibleRows(view.agents, Infinity);
-  const activeCost = active.rows.reduce((sum, { node }) => sum + cardRows(node), 0);
-  const activeIds = new Set(active.rows.map(({ node }) => node.id));
-  const finished = total.rows.filter(({ node }) => !activeIds.has(node.id));
-  const finishedCost = Math.max(0, ...finished.map(({ node }) => cardRows(node)));
-  const finishedTotal = finished.length;
-  const fitsAll = Math.floor((budget - activeCost) / finishedCost) >= finishedTotal;
-  const finishedFit = fitsAll
-    ? finishedTotal
-    : Math.floor((budget - activeCost - HIDDEN_DONE_ROWS) / finishedCost);
-  const listed = fitsAll ? total : visibleRows(view.agents, Math.max(0, finishedFit));
-  return { rows: listed.rows, hiddenDone: listed.hiddenDone, spenders };
-}
-
-function cardRows(node: AgentNode): number {
-  const base = node.status === "running" ? RUNNING_CARD_ROWS : FINISHED_CARD_ROWS;
-  return base + (node.branch === undefined ? 0 : BRANCH_ROWS) + SPACER_ROWS;
 }
 
 function rankedSpenders(agents: AgentTree): Spender[] {
@@ -128,11 +110,6 @@ function mainRow(ui: Ui, view: AgentsView): RenderElement {
           </Text>
         </Box>
       )}
-      {hasFinished(view.agents) ? (
-        <Box flexShrink={0} marginLeft={1}>
-          {clearButton(ui, view.clear)}
-        </Box>
-      ) : null}
     </Box>
   );
 }
@@ -158,14 +135,30 @@ function agentCard(ui: Ui, shown: Shown, view: AgentsView): RenderElement {
 }
 
 function titleRow(ui: Ui, shown: Shown, view: AgentsView): RenderElement {
+  const { Box, Text } = ui;
   const { node } = shown.row;
-  return paneRow(ui, {
-    prefix: shown.prefix,
-    dot: statusDot(node.status),
-    middle: { text: titleOf(node), color: paneInk().text },
-    middleWrap: "truncate-end",
-    width: view.width,
-  });
+  const dot = statusDot("running");
+  return (
+    <Box key={`title-${node.id}`} flexDirection="row" width={view.width} height={1} columnGap={1}>
+      <Box flexShrink={0}>
+        <Text wrap="truncate-end">
+          <Text color={paneInk().rule} wrap="truncate-end">
+            {shown.prefix}
+          </Text>
+          <Text color={dot.color} wrap="truncate-end">
+            {dot.text}
+          </Text>
+        </Text>
+      </Box>
+      <Box flexGrow={1} flexShrink={1} minWidth={0}>
+        {labelButton(ui, {
+          key: `agent-${node.id}`,
+          label: titleOf(node),
+          onPress: () => view.openAgent(node.id),
+        })}
+      </Box>
+    </Box>
+  );
 }
 
 function spendSection(ui: Ui, spenders: Spender[], view: AgentsView): RenderElement | null {
@@ -205,32 +198,19 @@ function spendRow(
   );
 }
 
-function titleOf(node: AgentNode): string {
-  return node.description || node.name || node.type;
-}
-
 function detailLines(node: AgentNode, now: number): string[] {
-  const lines = timingLines(node, now);
-  return node.branch === undefined
-    ? lines
-    : [...lines, joined([`⎇ ${node.branch}`, node.worktree ?? ""])];
-}
-
-function timingLines(node: AgentNode, now: number): string[] {
-  const elapsed = formatDuration(Math.max(0, (node.endedAt ?? now) - node.startedAt));
-  if (node.status !== "running") {
-    const tokens = node.tokensIn + node.tokensOut;
-    return [joined([node.type, elapsed, tokens > 0 ? `${formatTokens(tokens)} tokens` : ""])];
-  }
   const tool = node.running[0];
-  return [
+  const lines = [
     joined([node.type, shortModel(node.model), node.effort ?? ""]),
     joined([
-      elapsed,
+      formatDuration(Math.max(0, now - node.startedAt)),
       node.ctxTokens > 0 ? `ctx ${formatTokens(node.ctxTokens)}` : "",
       tool ? `${tool.tool}: ${tool.target}`.replace(/: $/, "") : "",
     ]),
   ];
+  return node.branch === undefined
+    ? lines
+    : [...lines, joined([`⎇ ${node.branch}`, node.worktree ?? ""])];
 }
 
 function joined(parts: string[]): string {

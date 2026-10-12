@@ -12,9 +12,8 @@ const NOW = 200_000;
 const FLUSH_MS = 400;
 const COLUMNS = 100;
 const TALL_ROWS = 40;
-const SHORT_ROWS = 22;
-const MAIN_ROOT = "/work/paneline";
-const WORKTREE_ROOT = "/work/paneline-signals";
+const MAIN_ROOT = "/work/vane";
+const WORKTREE_ROOT = "/work/vane-signals";
 const written = new Map<string, unknown>();
 const store = new Map<string, { value: unknown; version: number }>();
 const GIT_ARGV = [
@@ -37,12 +36,12 @@ describe("branch line in the card", () => {
           id: "a",
           description: "alpha",
           branch: "feature/signals",
-          worktree: "paneline-signals",
+          worktree: "vane-signals",
         }),
       ]),
     );
 
-    expect(rows.map((text) => text.trim())).toContain("⎇ feature/signals · paneline-signals");
+    expect(rows.map((text) => text.trim())).toContain("⎇ feature/signals · vane-signals");
   });
 
   test("P2 an agent in the main checkout shows the branch alone", async ($, on) => {
@@ -64,28 +63,6 @@ describe("branch line in the card", () => {
 
     expect(rows.some((text) => text.includes("⎇"))).toBe(false);
   });
-
-  test("P4 the collapse counts the branch line, so fewer finished cards fit", async ($, on) => {
-    world(on);
-    const finished = (withBranch: boolean) =>
-      Array.from({ length: 8 }, (_, i) =>
-        agent({
-          id: `f${i}`,
-          description: `finished ${i}`,
-          endedAt: NOW - 40_000 + i * 100,
-          ...(withBranch && { branch: "main" }),
-        }),
-      );
-
-    const plainPane = await paneWith($, finished(false), SHORT_ROWS);
-    const plain = await rowTexts(plainPane);
-    await plainPane.unmount();
-    const branched = await rowTexts(await paneWith($, finished(true), SHORT_ROWS));
-
-    const cards = (rows: string[]) => rows.filter((text) => text.includes("finished ")).length;
-    expect(cards(branched)).toBeLessThan(cards(plain));
-    expect(branched.length).toBeLessThan(SHORT_ROWS);
-  });
 });
 
 describe("finding the place", () => {
@@ -98,7 +75,7 @@ describe("finding the place", () => {
     expect(w.processes).toEqual([GIT_ARGV]);
     expect(w.tree()["agent-1"]).toMatchObject({
       branch: "feature/signals",
-      worktree: "paneline-signals",
+      worktree: "vane-signals",
     });
   });
 
@@ -142,7 +119,7 @@ describe("finding the place", () => {
 
     expect(w.tree()["agent-1"]).toMatchObject({
       branch: "feature/signals",
-      worktree: "paneline-signals",
+      worktree: "vane-signals",
     });
   });
 
@@ -274,7 +251,7 @@ function agent(fields: Partial<AgentNode> & { id: string }): AgentNode {
     description: fields.id,
     background: false,
     model: "sonnet",
-    status: "done",
+    status: "running",
     startedAt: NOW - 10_000,
     ctxTokens: 0,
     tokensIn: 0,
@@ -290,7 +267,7 @@ async function paneWith($: Engine, agents: AgentNode[], rows: number = TALL_ROWS
     version: 1,
   });
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",
@@ -338,6 +315,7 @@ function elementsIn(node: Node): Node[] {
 }
 
 function textOf(node: Node): string {
+  if (node.type === "Button") return typeof node.props?.label === "string" ? node.props.label : "";
   return (node.children ?? [])
     .map((child) => (typeof child === "string" ? child : textOf(child as Node)))
     .join("");

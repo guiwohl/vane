@@ -5,8 +5,8 @@ import type { UsageSnap } from "../types";
 import { compactThreshold, forgetThreshold } from "./breakdown";
 
 const usageAtom = atom(
-  { plugin: "paneline", key: "usage" } as const,
-  { context: null, limits: [] } as UsageSnap,
+  { plugin: "vane", key: "usage" } as const,
+  { context: null, limits: [], tokens: null, window: null } as UsageSnap,
 );
 
 type Measure = Pick<SessionMeasureInput, "context" | "rateLimits" | "changed">;
@@ -50,6 +50,8 @@ async function storeUsage($: EngineInterface, measure: Measure): Promise<void> {
       percent: limit.percentUsed,
       ...(limit.resetsAt === undefined ? {} : { resetsAt: limit.resetsAt }),
     })),
+    tokens: measure.changed.includes("context") ? (measure.context.tokens ?? null) : stored.tokens,
+    window: measure.changed.includes("context") ? measure.context.window : stored.window,
   };
   if (JSON.stringify(stored) === JSON.stringify(snap)) return;
   await update($, usageAtom, () => snap);

@@ -1,82 +1,104 @@
 import { atom, read, update } from "claude-code";
-import type { EngineInterface, On } from "claude-code";
+import type { EngineInterface, On, Timer } from "claude-code";
 
-import type { Activity, CallRecord, RunningCall } from "../types";
+import type {
+  Activity,
+  AgentTree,
+  CallRecord,
+  RereadState,
+  StartedCall,
+  UsageSnap,
+} from "../types";
 import { activityTab } from "./activity-draw";
+import { isRunning } from "./agents-model";
 import { withoutCleared } from "./clear-kit";
-import { failureText } from "./command-failure";
-import { isLightTheme } from "./pane-kit";
+import { liveEntries } from "./live-draw";
 import { PANE } from "./pane-tab";
+import { clearedRing, emptyRing } from "./series-ring";
 import { isShownTab } from "./shown-tab";
+import { TAB_BAR_ROWS } from "./tab-bar";
 
-export const ACTIVITY_TAB = { id: "activity", label: "Activity" };
+export const ACTIVITY_TAB = { id: "activity", label: "Overview" };
 
-const callsAtom = atom({ plugin: "paneline", key: "calls" } as const, [] as CallRecord[]);
-const activityAtom = atom({ plugin: "paneline", key: "activity" } as const, [] as Activity[]);
-const runningAtom = atom({ plugin: "paneline", key: "running" } as const, [] as RunningCall[]);
-const totalMsAtom = atom({ plugin: "paneline", key: "totalMs" } as const, 0);
-const clearedAtom = atom({ plugin: "paneline", key: "activityCleared" } as const, {
+const TICK_MS = 1000;
+
+let ticker: Timer | undefined;
+
+const callsAtom = atom({ plugin: "vane", key: "calls" } as const, [] as CallRecord[]);
+const activityAtom = atom({ plugin: "vane", key: "activity" } as const, [] as Activity[]);
+const clearedAtom = atom({ plugin: "vane", key: "activityCleared" } as const, {
   ids: [] as string[],
-  totalMs: 0,
 });
-const themeAtom = atom({ plugin: "paneline", key: "theme" } as const, "dark");
-const openCallAtom = atom({ plugin: "paneline", key: "openCall" } as const, null as string | null);
+const seriesAtom = atom({ plugin: "vane", key: "series" } as const, emptyRing());
+const usageAtom = atom(
+  { plugin: "vane", key: "usage" } as const,
+  { context: null, limits: [], tokens: null, window: null } as UsageSnap,
+);
+
+const rereadAtom = atom(
+  { plugin: "vane", key: "reread" } as const,
+  { seen: [], suppressed: 0 } as RereadState,
+);
+
+const runningAtom = atom({ plugin: "vane", key: "running" } as const, [] as StartedCall[]);
+const agentsAtom = atom({ plugin: "vane", key: "agents" } as const, {} as AgentTree);
+const sessionUsdAtom = atom({ plugin: "vane", key: "sessionUsd" } as const, null as number | null);
 
 export function registerActivityTab(on: On): void {
-  on("command.run", { command: "session" }, async ($, e, next) => {
-    try {
-      await update($, openCallAtom, () => null);
-      return await next(e);
-    } catch (error) {
-      const text = failureText(error);
-      $.ui.log(text, { to: "debug" });
-      return { text };
-    }
-  });
-
-  on("ui.close", { id: PANE }, async ($, e, next) => {
-    if (e.origin.kind !== "person" || (await read($, openCallAtom)) === null) return next(e);
-    await update($, openCallAtom, () => null);
-    return { value: undefined };
-  });
-
   on("ui.render", { component: "Pane", requestId: PANE }, async ($, e, next) => {
-    if (!isShownTab(ACTIVITY_TAB.id)) return next(e);
-    const [allActivity, allCalls, running, allMs, cwd, openCallId, theme, cleared] =
+    if (!isShownTab(ACTIVITY_TAB.id)) {
+      stopTicking();
+      return next(e);
+    }
+    const [allActivity, series, usage, now, cleared, running, agents, usd, reread] =
       await Promise.all([
         read($, activityAtom),
-        read($, callsAtom),
-        read($, runningAtom),
-        read($, totalMsAtom),
-        $.session.cwd(),
-        read($, openCallAtom),
-        read($, themeAtom),
+        read($, seriesAtom),
+        read($, usageAtom),
+        $.clock.now(),
         read($, clearedAtom),
+        read($, runningAtom),
+        read($, agentsAtom),
+        read($, sessionUsdAtom),
+        read($, rereadAtom),
       ]);
-    return activityTab($.ui.resolve(e), {
-      activity: withoutCleared(allActivity, cleared.ids),
-      calls: withoutCleared(allCalls, cleared.ids),
+    const activity = withoutCleared(allActivity, cleared.ids);
+    const live = liveEntries({
       running,
-      totalMs: allMs - cleared.totalMs,
-      cwd,
+      agents: Object.values(agents).filter(isRunning),
+      activity,
+    });
+    if (live.length > 0) ticker ??= $.clock.every(TICK_MS, () => $.ui.invalidate("ui.render"));
+    else stopTicking();
+    return activityTab($.ui.resolve(e), {
+      activity,
+      series,
+      usage,
+      usd,
+      rereads: reread.suppressed,
+      live,
+      now,
       width: e.props.bodyColumns,
-      openCallId,
-      openCall: (id) => void update($, openCallAtom, () => id),
-      closeCall: () => void update($, openCallAtom, () => null),
-      isLightTheme: isLightTheme(theme),
+      height: e.props.scroll.bodyRows - TAB_BAR_ROWS,
       clear: () => void clearActivity($),
     });
   });
+
+  on("ui.close", { id: PANE }, (_$, e, next) => {
+    stopTicking();
+    return next(e);
+  });
+}
+
+function stopTicking(): void {
+  ticker?.cancel();
+  ticker = undefined;
 }
 
 async function clearActivity($: EngineInterface): Promise<void> {
-  const [activity, calls, totalMs] = await Promise.all([
-    read($, activityAtom),
-    read($, callsAtom),
-    read($, totalMsAtom),
+  const [activity, calls] = await Promise.all([read($, activityAtom), read($, callsAtom)]);
+  await Promise.all([
+    update($, clearedAtom, () => ({ ids: [...activity, ...calls].map((entry) => entry.id) })),
+    update($, seriesAtom, clearedRing),
   ]);
-  await update($, clearedAtom, () => ({
-    ids: [...activity, ...calls].map((entry) => entry.id),
-    totalMs,
-  }));
 }

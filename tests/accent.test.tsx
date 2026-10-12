@@ -2,7 +2,6 @@ import { describe, expect, mock, test } from "claude-code/testing";
 import type { AgentInfo, On } from "claude-code";
 import type { Engine, Mounted } from "claude-code/testing";
 
-import type { Activity } from "../types";
 import type { AgentNode } from "../hooks/agents-model";
 import { palette } from "../hooks/palette";
 import { ENGINE_DEFAULT_GREY, accentOf } from "../hooks/session-color";
@@ -14,6 +13,7 @@ const RED = accentOf("red");
 const DEFAULT_GREY = ENGINE_DEFAULT_GREY;
 const COLUMNS = 100;
 const NOW = 200_000;
+const OVERVIEW_HEADERS = ["Gauges", "Trend", "Tool mix", "Now"];
 const store = new Map<string, { value: unknown; version: number }>();
 
 describe("tool header", () => {
@@ -45,37 +45,22 @@ describe("tool header", () => {
 });
 
 describe("activity pane", () => {
-  test("A4 the section headers stay plain white under a session colour", async ($, on) => {
+  test("A4 the section headers do not take a session colour", async ($, on) => {
     worldOf(on, "blue");
 
     const pane = await mountPane($);
 
-    for (const name of ["Now", "Tool mix", "Timeline"])
-      expect(await colorsOf(pane, name)).toEqual([palette.userText]);
+    for (const name of OVERVIEW_HEADERS)
+      expect(await colorsOf(pane, name)).not.toContain(accentOf("blue"));
   });
 
-  test("A5 with no colour set the section headers are plain white", async ($, on) => {
+  test("A5 the section headers all share one colour that is the same with no session colour", async ($, on) => {
     worldOf(on, "default");
+    const plain = await mountPane($);
+    const plainColors = await Promise.all(OVERVIEW_HEADERS.map((name) => colorsOf(plain, name)));
 
-    const pane = await mountPane($);
-
-    expect(await colorsOf(pane, "Now")).toEqual([palette.userText]);
-  });
-});
-
-describe("files pane", () => {
-  test("A6 the header and folder rows are plain white, the guides muted, the counts keep their colours", async ($, on) => {
-    worldOf(on, "red");
-    store.set("activity", {
-      value: [edit("/work/src/a.ts", 3, 1), edit("/work/src/deep/b.ts", 2, 0)],
-      version: 1,
-    });
-
-    const pane = await mountPane($, "Files");
-
-    expect(await colorsOf(pane, "Files")).not.toContain(RED);
-    expect(await colorsOf(pane, "└─")).toEqual([palette.rule]);
-    expect(await colorsOf(pane, "+3")).toEqual([palette.ok]);
+    expect(plainColors.flat().length).toBeGreaterThan(0);
+    expect(new Set(plainColors.flat()).size).toBe(1);
   });
 });
 
@@ -89,7 +74,7 @@ describe("subagents pane", () => {
     expect(await colorsOf(pane, "Spend")).toEqual([palette.userText]);
     expect(await colorsOf(pane, "▰▰▰▰▰▰")).toEqual([palette.tool]);
     expect(await colorsOf(pane, "└─ ")).toEqual([palette.rule]);
-    expect(await colorsOf(pane, "✓")).toEqual([palette.ok]);
+    expect(await colorsOf(pane, "●")).toEqual([palette.tool]);
   });
 
   test("A8 with no colour set the Spend bar has the same colour", async ($, on) => {
@@ -128,7 +113,7 @@ function worldOf(on: On, colorName: string): void {
 
 function mountToolGroup($: Engine, call: { isErrored?: boolean } = {}) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolGroup",
     props: {
@@ -152,7 +137,7 @@ function mountToolGroup($: Engine, call: { isErrored?: boolean } = {}) {
 
 async function mountPane($: Engine, tab?: string): Promise<Pane> {
   const pane = await $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",
@@ -179,10 +164,6 @@ async function colorsOf(mount: Mount, text: string): Promise<unknown[]> {
   return [...new Set(colors)];
 }
 
-function edit(target: string, added: number, removed: number): Activity {
-  return { id: target, tool: "Edit", target, ms: 1, isErrored: false, added, removed };
-}
-
 function agent(id: string, description: string): AgentNode {
   return {
     id,
@@ -190,7 +171,7 @@ function agent(id: string, description: string): AgentNode {
     description,
     background: false,
     model: "sonnet",
-    status: "done",
+    status: "running",
     startedAt: NOW - 10_000,
     ctxTokens: 0,
     tokensIn: 5_000,

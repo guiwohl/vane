@@ -236,6 +236,14 @@ export function labelButton({ Button }: Ui, spec: ButtonSpec): RenderElement {
   );
 }
 
+export function mutedLine({ Text }: Ui, text: string): RenderElement {
+  return (
+    <Text color={paneInk().muted} wrap="truncate-end">
+      {text}
+    </Text>
+  );
+}
+
 export function plural(noun: string, count: number): string {
   return count === 1 ? noun : `${noun}s`;
 }

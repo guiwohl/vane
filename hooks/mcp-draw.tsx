@@ -7,9 +7,11 @@ import type {
 
 import { singleLine } from "./format";
 import { mcpCommandName } from "./mcp-name";
-import { header, labelButton, paneHeaderLook, plural } from "./pane-kit";
+import { labelButton, plural } from "./pane-kit";
 import { paneInk } from "./pane-ink";
-import { SCOPE_GROUPS, scopeOf, serversOf } from "./servers";
+import { byOriginThenUses, countCells, countColumn, originWord } from "./row-kit";
+import type { Origin } from "./row-kit";
+import { scopeOf, serversOf } from "./servers";
 import type { McpAction, McpScope, ScopeIndex, Server } from "./servers";
 import { rankedUses } from "./use-counts";
 import type { UseEntry } from "./use-counts";
@@ -33,17 +35,27 @@ type Card = {
   name: string;
   scope: McpScope;
   detail: string;
+  uses: number;
   isLive: boolean;
   actions: McpAction[];
   tools: UseEntry[];
 };
 
-type Group = { scope: McpScope; heading: string; cards: Card[] };
-
+const SCOPE_ORIGINS: Record<McpScope, Origin> = {
+  project: "project",
+  local: "project",
+  user: "global",
+  claudeai: "other",
+  dynamic: "other",
+};
 const ACTIONS_INDENT_CELLS = 2;
 const OPEN_GLYPH = "▾";
 const FOLDED_GLYPH = "▸";
 const CLEAR_LABEL = "clear usage stats";
+
+export function mcpServerCount(view: McpView): number {
+  return view.context === null ? 0 : cardsOf(serversOf(view.context.mcpTools), view).length;
+}
 
 export function mcpTab(ui: Ui, view: McpView): RenderElement {
   const { Box, Text } = ui;
@@ -55,8 +67,11 @@ export function mcpTab(ui: Ui, view: McpView): RenderElement {
       </Text>
     );
   }
-  const groups = groupsOf(cardsOf(serversOf(context.mcpTools), view));
-  const cards = groups.flatMap((group) => group.cards);
+  const cards = byOriginThenUses(
+    cardsOf(serversOf(context.mcpTools), view),
+    (card) => SCOPE_ORIGINS[card.scope],
+    (card) => card.uses,
+  );
   if (cards.length === 0) {
     return (
       <Text color={paneInk().muted} wrap="truncate-end">
@@ -65,24 +80,19 @@ export function mcpTab(ui: Ui, view: McpView): RenderElement {
     );
   }
   const detailCells = Math.max(...cards.map((card) => card.detail.length));
+  const cells = countCells(cards.map((card) => card.uses));
   return (
     <Box flexDirection="column" width={view.width}>
       {titleRow(ui, view)}
-      <Text color={paneInk().muted} wrap="truncate-end">
-        {`${cards.length} ${plural("server", cards.length)}`}
-      </Text>
       <Box height={1} />
-      {groups.flatMap((group, index) => [
-        ...(index > 0 ? [<Box key={`${group.scope}-gap`} height={1} />] : []),
-        header(ui, group.heading, paneHeaderLook(), view.width),
-        ...group.cards.flatMap((card) =>
-          cardRows(ui, card, {
-            view,
-            detailCells,
-            isOpen: view.openServers.has(card.name),
-          }),
-        ),
-      ])}
+      {cards.flatMap((card) =>
+        cardRows(ui, card, {
+          view,
+          detailCells,
+          cells,
+          isOpen: view.openServers.has(card.name),
+        }),
+      )}
     </Box>
   );
 }
@@ -106,14 +116,6 @@ function titleRow(ui: Ui, view: McpView): RenderElement {
   );
 }
 
-function groupsOf(cards: Card[]): Group[] {
-  return SCOPE_GROUPS.map(({ scope, heading }) => ({
-    scope,
-    heading,
-    cards: cards.filter((card) => card.scope === scope),
-  })).filter((group) => group.cards.length > 0);
-}
-
 function cardsOf(live: Server[], view: McpView): Card[] {
   const named = live.map((server) => ({
     ...server,
@@ -128,7 +130,8 @@ function cardsOf(live: Server[], view: McpView): Card[] {
       return {
         name: server.name,
         scope: scopeOf(server.name, view.scopes),
-        detail: `${server.tools} ${plural("tool", server.tools)} · ${uses} ${plural("use", uses)}`,
+        detail: `${server.tools} ${plural("tool", server.tools)}`,
+        uses,
         isLive: true,
         actions: ["reconnect", "disable"] as McpAction[],
         tools,
@@ -137,7 +140,8 @@ function cardsOf(live: Server[], view: McpView): Card[] {
     ...disabled.map((name) => ({
       name,
       scope: scopeOf(name, view.scopes),
-      detail: `${usesOfServer(name, view.toolUses)} ${plural("use", usesOfServer(name, view.toolUses))}`,
+      detail: "",
+      uses: usesOfServer(name, view.toolUses),
       isLive: false,
       actions: ["enable"] as McpAction[],
       tools: [],
@@ -170,13 +174,18 @@ function toolRowsOf(
   );
 }
 
-type RowLook = { view: McpView; detailCells: number; isOpen: boolean };
+type RowLook = { view: McpView; detailCells: number; cells: number; isOpen: boolean };
 
-function cardRows(ui: Ui, card: Card, { view, detailCells, isOpen }: RowLook): RenderElement[] {
+function cardRows(
+  ui: Ui,
+  card: Card,
+  { view, detailCells, cells, isOpen }: RowLook,
+): RenderElement[] {
   const { Box, Button, Text } = ui;
   const toggle = () => view.toggle(card.name);
   const rows: RenderElement[] = [
     <Box key={`${card.name}-name`} flexDirection="row" width={view.width} height={1} columnGap={1}>
+      {countColumn(ui, card.uses, cells)}
       <Button
         key={`${card.name}-toggle`}
         label={isOpen ? OPEN_GLYPH : FOLDED_GLYPH}
@@ -195,6 +204,7 @@ function cardRows(ui: Ui, card: Card, { view, detailCells, isOpen }: RowLook): R
           {card.detail}
         </Text>
       </Box>
+      {originWord(ui, SCOPE_ORIGINS[card.scope])}
     </Box>,
   ];
   if (!isOpen) return rows;
@@ -204,7 +214,7 @@ function cardRows(ui: Ui, card: Card, { view, detailCells, isOpen }: RowLook): R
         key={`${card.name}-actions`}
         flexDirection="row"
         columnGap={2}
-        marginLeft={ACTIONS_INDENT_CELLS}
+        marginLeft={cells + 1 + ACTIONS_INDENT_CELLS}
         height={1}
         overflow="hidden"
       >
@@ -220,10 +230,10 @@ function cardRows(ui: Ui, card: Card, { view, detailCells, isOpen }: RowLook): R
       </Box>,
     );
   }
-  return [...rows, ...toolRows(ui, card, view.width)];
+  return [...rows, ...toolRows(ui, card, view.width, cells + 1 + ACTIONS_INDENT_CELLS)];
 }
 
-function toolRows(ui: Ui, card: Card, width: number): RenderElement[] {
+function toolRows(ui: Ui, card: Card, width: number, indent: number): RenderElement[] {
   const { Box, Text } = ui;
   const labels = card.tools.map((tool) => `${tool.uses} ${plural("use", tool.uses)}`);
   const usesCells = Math.max(0, ...labels.map((label) => label.length));
@@ -231,9 +241,9 @@ function toolRows(ui: Ui, card: Card, width: number): RenderElement[] {
     <Box
       key={`${card.name}-tool-${tool.name}`}
       flexDirection="row"
-      width={width - ACTIONS_INDENT_CELLS}
+      width={width - indent}
       height={1}
-      marginLeft={ACTIONS_INDENT_CELLS}
+      marginLeft={indent}
       columnGap={1}
     >
       <Box flexGrow={1} flexShrink={1} minWidth={0}>

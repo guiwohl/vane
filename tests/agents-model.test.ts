@@ -9,7 +9,7 @@ import {
   toolStarted,
   visibleRows,
 } from "../hooks/agents-model";
-import type { AgentTree, Usage } from "../hooks/agents-model";
+import type { AgentTree, TreeRow, Usage } from "../hooks/agents-model";
 
 const NO_USAGE = null;
 
@@ -378,7 +378,7 @@ describe("tree rows", () => {
   });
 
   test("A27 an empty tree shows no rows", () => {
-    expect(visibleRows({}, Infinity).rows).toEqual([]);
+    expect(visibleRows({})).toEqual([]);
   });
 });
 
@@ -422,7 +422,7 @@ function endedFrom(firstEnd: number, count: number): Record<string, number> {
 }
 
 function rowsOf(tree: AgentTree): [string, number, boolean][] {
-  return visibleRows(tree, Infinity).rows.map((row) => [row.node.id, row.depth, row.isLast]);
+  return visibleRows(tree).map((row: TreeRow) => [row.node.id, row.depth, row.isLast]);
 }
 
 function statusesOf(tree: AgentTree): Record<string, string> {

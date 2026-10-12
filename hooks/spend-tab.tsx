@@ -8,11 +8,8 @@ import { spendTab } from "./spend-draw";
 
 export const SPEND_TAB = { id: "spend", label: "Spend" };
 
-const spendAtom = atom({ plugin: "paneline", key: "spend" } as const, emptySpend());
-const sessionUsdAtom = atom(
-  { plugin: "paneline", key: "sessionUsd" } as const,
-  null as number | null,
-);
+const spendAtom = atom({ plugin: "vane", key: "spend" } as const, emptySpend());
+const sessionUsdAtom = atom({ plugin: "vane", key: "sessionUsd" } as const, null as number | null);
 
 export function registerSpendTab(on: On): void {
   on("ui.render", { component: "Pane", requestId: PANE }, async ($, e, next) => {

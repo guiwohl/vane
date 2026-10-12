@@ -13,20 +13,19 @@ const PANE_ROWS = 40;
 const ACTIVE_TAB_TEXT = "clawd_background";
 const LEFT_ARROW = "‹";
 const RIGHT_ARROW = "›";
-const ALL_TABS = ["Activity", "Files", "Agents", "Context", "MCP", "Skills", "Spend"];
-const FIRST_PAGE = ["Activity", "Files", "Agents"];
-const SECOND_PAGE = ["Context", "MCP", "Skills"];
-const LAST_PAGE = ["Spend"];
+const ALL_TABS = ["Overview", "Agents", "Context", "Setup", "Spend"];
+const FIRST_PAGE = ["Overview", "Agents"];
+const SECOND_PAGE = ["Context", "Setup", "Spend"];
 
 describe("tab bar paging", () => {
-  test("P1 a narrow pane opens on Activity with Files and Agents beside it and only a right arrow", async ($, on) => {
+  test("P1 a narrow pane opens on Overview with Agents beside it and only a right arrow", async ($, on) => {
     worldOf(on);
 
     const pane = await mountPane($, NARROW_COLUMNS);
 
     expect(await barOf(pane)).toEqual({
       tabs: FIRST_PAGE,
-      selected: "Activity",
+      selected: "Overview",
       arrows: [RIGHT_ARROW],
     });
   });
@@ -42,12 +41,12 @@ describe("tab bar paging", () => {
     expect(after).toEqual({
       tabs: SECOND_PAGE,
       selected: "Context",
-      arrows: [LEFT_ARROW, RIGHT_ARROW],
+      arrows: [LEFT_ARROW],
     });
     expect(after.tabs.filter((name) => before.tabs.includes(name))).toEqual([]);
   });
 
-  test("P3 pressing the left arrow on the second page brings the first page back with Activity selected", async ($, on) => {
+  test("P3 pressing the left arrow on the second page brings the first page back with Overview selected", async ($, on) => {
     worldOf(on);
     const pane = await mountPane($, NARROW_COLUMNS);
     await press(pane, RIGHT_ARROW);
@@ -56,46 +55,17 @@ describe("tab bar paging", () => {
 
     expect(await barOf(pane)).toEqual({
       tabs: FIRST_PAGE,
-      selected: "Activity",
+      selected: "Overview",
       arrows: [RIGHT_ARROW],
     });
   });
 
-  test("P4 pressing the right arrow twice shows the last tab alone, selected, with no right arrow", async ($, on) => {
-    worldOf(on);
-    const pane = await mountPane($, NARROW_COLUMNS);
-
-    await press(pane, RIGHT_ARROW);
-    await press(pane, RIGHT_ARROW);
-
-    expect(await barOf(pane)).toEqual({
-      tabs: LAST_PAGE,
-      selected: "Spend",
-      arrows: [LEFT_ARROW],
-    });
-  });
-
-  test("P5 pressing the left arrow on the last page brings the second page back with Context selected", async ($, on) => {
-    worldOf(on);
-    const pane = await mountPane($, NARROW_COLUMNS);
-    await press(pane, RIGHT_ARROW);
-    await press(pane, RIGHT_ARROW);
-
-    await press(pane, LEFT_ARROW);
-
-    expect(await barOf(pane)).toEqual({
-      tabs: SECOND_PAGE,
-      selected: "Context",
-      arrows: [LEFT_ARROW, RIGHT_ARROW],
-    });
-  });
-
-  test("P6 a wide pane shows all seven tabs with Activity selected and no arrows", async ($, on) => {
+  test("P6 a wide pane shows all five tabs with Overview selected and no arrows", async ($, on) => {
     worldOf(on);
 
     const pane = await mountPane($, WIDE_COLUMNS);
 
-    expect(await barOf(pane)).toEqual({ tabs: ALL_TABS, selected: "Activity", arrows: [] });
+    expect(await barOf(pane)).toEqual({ tabs: ALL_TABS, selected: "Overview", arrows: [] });
   });
 
   test("P7 after clicking Agents the right arrow shows the hidden tabs and selects Context", async ($, on) => {
@@ -108,22 +78,7 @@ describe("tab bar paging", () => {
     expect(await barOf(pane)).toEqual({
       tabs: SECOND_PAGE,
       selected: "Context",
-      arrows: [LEFT_ARROW, RIGHT_ARROW],
-    });
-  });
-
-  test("P8 after going to the second page and clicking MCP the left arrow shows the first page with Activity selected", async ($, on) => {
-    worldOf(on);
-    const pane = await mountPane($, NARROW_COLUMNS);
-    await press(pane, RIGHT_ARROW);
-    await press(pane, "MCP");
-
-    await press(pane, LEFT_ARROW);
-
-    expect(await barOf(pane)).toEqual({
-      tabs: FIRST_PAGE,
-      selected: "Activity",
-      arrows: [RIGHT_ARROW],
+      arrows: [LEFT_ARROW],
     });
   });
 
@@ -138,13 +93,13 @@ describe("tab bar paging", () => {
     expect(bar.tabs).toContain("Agents");
   });
 
-  test("P10 clicking a tab in a wide pane selects it and the bar still shows all seven tabs with no arrows", async ($, on) => {
+  test("P10 clicking a tab in a wide pane selects it and the bar still shows all five tabs with no arrows", async ($, on) => {
     worldOf(on);
     const pane = await mountPane($, WIDE_COLUMNS);
 
-    await press(pane, "Skills");
+    await press(pane, "Spend");
 
-    expect(await barOf(pane)).toEqual({ tabs: ALL_TABS, selected: "Skills", arrows: [] });
+    expect(await barOf(pane)).toEqual({ tabs: ALL_TABS, selected: "Spend", arrows: [] });
   });
 });
 
@@ -168,7 +123,7 @@ function worldOf(on: On): void {
 
 function mountPane($: Engine, columns: number): Promise<Pane> {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "Pane",
     requestId: "session",

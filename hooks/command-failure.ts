@@ -1,4 +1,4 @@
 export function failureText(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return `paneline: could not open the pane: ${message}`;
+  return `vane: could not open the pane: ${message}`;
 }

@@ -7,15 +7,13 @@ type World = {
   clock: MockClock;
   writes: string[];
   submittedContext: (readonly string[] | undefined)[];
-  usageArgs: unknown[];
   startCall: (ms: number) => Promise<StartedCall>;
 };
 
 const COLUMNS = 100;
 const HOME_DIR = "/Users/dev";
 const NOTHING_IS_EXPANDED = false;
-const STALE_CONTEXT_PERCENT = 10;
-const MEASURED_CONTEXT_PERCENT = 42;
+const MEASURED_TOKENS = 42_000;
 const MEASURED_FIVE_HOUR_PERCENT = 17;
 const LONG_TURN_MS = 60_000;
 const SHORT_TURN_MS = 1_000;
@@ -78,84 +76,16 @@ describe("turn footers", () => {
 });
 
 describe("usage meters", () => {
-  test("S4 the same measure twice writes usage once and the band shows the measured figures", async ($, on) => {
+  test("S4 the same measure twice writes usage once and the status line shows the measured figures", async ($, on) => {
     const world = worldOf($, on);
-    const band = await mountBand($, on);
 
-    await measure($, MEASURED_CONTEXT_PERCENT, MEASURED_FIVE_HOUR_PERCENT);
-    await measure($, MEASURED_CONTEXT_PERCENT, MEASURED_FIVE_HOUR_PERCENT);
+    await measure($, MEASURED_TOKENS, MEASURED_FIVE_HOUR_PERCENT);
+    await measure($, MEASURED_TOKENS, MEASURED_FIVE_HOUR_PERCENT);
 
     expect(world.writes.filter((key) => key === "usage")).toHaveLength(1);
-    const shown = shownText(await band.drawn());
-    expect(shown).toContain("≡ 42%");
-    expect(shown).toContain("◷ 17%");
-  });
-
-  test("S5 a measure with new figures changes the band", async ($, on) => {
-    worldOf($, on);
-    const band = await mountBand($, on);
-    await measure($, MEASURED_CONTEXT_PERCENT, MEASURED_FIVE_HOUR_PERCENT);
-
-    await measure($, 55, MEASURED_FIVE_HOUR_PERCENT);
-
-    const shown = shownText(await band.drawn());
-    expect(shown).toContain("55%");
-    expect(shown).not.toContain("42%");
-  });
-
-  test("S6 a turn ending leaves the band on the measured figures", async ($, on) => {
-    const world = worldOf($, on);
-    const band = await mountBand($, on);
-    await measure($, MEASURED_CONTEXT_PERCENT, MEASURED_FIVE_HOUR_PERCENT);
-
-    await endTurn($, world, SHORT_TURN_MS, 0);
-
-    const shown = shownText(await band.drawn());
-    expect(shown).toContain("42%");
-    expect(shown).not.toContain(`${STALE_CONTEXT_PERCENT}%`);
-  });
-
-  test("S7 a measure with no context fill and no limits draws no meter band", async ($, on) => {
-    worldOf($, on);
-    const band = await mountBand($, on);
-
-    await $.session.measure({ context: { window: 200_000 }, rateLimits: [], changed: ["context"] });
-
-    const shown = shownText(await band.drawn());
-    expect(shown).not.toContain("≡");
-    expect(shown).not.toContain("%");
-  });
-});
-
-describe("context meter against the auto-compact threshold", () => {
-  test("S12 the meter shows tokens over the auto-compact threshold, matching the engine until-compact line", async ($, on) => {
-    worldOf($, on, usageWithThreshold(AUTO_COMPACT_THRESHOLD));
-    const band = await mountBand($, on);
-
-    await $.session.measure(tokenMeasure(222_000));
-
-    expect(shownText(await band.drawn())).toContain("98%");
-  });
-
-  test("S13 without a breakdown threshold the meter falls back to the engine percent", async ($, on) => {
-    worldOf($, on, usageWithThreshold(undefined));
-    const band = await mountBand($, on);
-
-    await $.session.measure(tokenMeasure(222_000));
-
-    expect(shownText(await band.drawn())).toContain("22%");
-  });
-
-  test("S14 a rate-limit-only measure keeps the context meter and asks for no breakdown", async ($, on) => {
-    const world = worldOf($, on, usageWithThreshold(AUTO_COMPACT_THRESHOLD));
-    const band = await mountBand($, on);
-    await $.session.measure(tokenMeasure(222_000));
-    const askedBefore = world.usageArgs.length;
-
-    await $.session.measure({ ...tokenMeasure(222_000), changed: ["rateLimits"] });
-
-    expect(world.usageArgs.length).toBe(askedBefore);
-    expect(shownText(await band.drawn())).toContain("98%");
+    const shown = shownText(await mountStatusLine($));
+    expect(shown).toContain("42.0k");
+    expect(shown).toContain("17%");
   });
 });
 
@@ -192,17 +122,16 @@ describe("diagram hint", () => {
   });
 });
 
-function worldOf($: Engine, on: On, usage: object = DEFAULT_USAGE): World {
+function worldOf($: Engine, on: On): World {
   const clock = mock.clock(on);
   mock.env(on, { HOME: HOME_DIR });
   const writes: string[] = [];
   const submittedContext: (readonly string[] | undefined)[] = [];
   const startedIds: string[] = [];
-  const usageArgs: unknown[] = [];
 
   on("state.set", (_$, e, next) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (e.plugin === "paneline") writes.push(e.key);
+    if (e.plugin === "vane") writes.push(e.key);
     return next(e);
   });
   on("tool.call", async (_$, e) => {
@@ -213,10 +142,7 @@ function worldOf($: Engine, on: On, usage: object = DEFAULT_USAGE): World {
   on("turn.start", (_$, e) => ({ turnId: e.turnId }));
   on("turn.complete", (_$, e) => ({ text: e.answer }));
   on("session.measure", (_$, e) => ({ changed: e.changed }));
-  on("session.usage", (_$, args) => {
-    usageArgs.push(args);
-    return { value: usage } as never;
-  });
+  on("session.usage", () => ({ value: DEFAULT_USAGE }));
   on("prompt.submit", (_$, e) => {
     submittedContext.push(e.context);
     return { text: e.text };
@@ -228,7 +154,7 @@ function worldOf($: Engine, on: On, usage: object = DEFAULT_USAGE): World {
     await clock.settle();
     return { id: startedIds.at(-1) ?? "", done };
   };
-  return { clock, writes, submittedContext, usageArgs, startCall };
+  return { clock, writes, submittedContext, startCall };
 }
 
 function toolRowProps(id: string, isRunning: boolean) {
@@ -244,7 +170,7 @@ function toolRowProps(id: string, isRunning: boolean) {
 
 function mountToolRow($: Engine, id: string, isRunning: boolean) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolUse",
     props: toolRowProps(id, isRunning),
@@ -255,7 +181,7 @@ function mountToolRow($: Engine, id: string, isRunning: boolean) {
 
 function mountToolGroup($: Engine, ids: string[]) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "ToolGroup",
     props: {
@@ -270,7 +196,7 @@ function mountToolGroup($: Engine, ids: string[]) {
 
 function mountFooter($: Engine, durationMs: number) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "TurnDuration",
     props: { word: "Baked", durationMs },
@@ -278,58 +204,26 @@ function mountFooter($: Engine, durationMs: number) {
   });
 }
 
-function mountBand($: Engine, on: On) {
-  on("ui.render", { component: "AbovePrompt" }, ($, e) => {
-    const { Text } = $.ui.resolve(e);
-    return <Text>engine band</Text>;
-  });
-  return $.ui.mount({
-    plugin: "paneline",
+async function mountStatusLine($: Engine) {
+  const mounted = await $.ui.mount({
+    plugin: "vane",
     surface: "terminal",
-    component: "AbovePrompt",
-    props: {
-      hasSurvey: false,
-      isWorking: false,
-      maxRows: 10,
-      bodyColumns: COLUMNS,
-      scroll: { offset: 0, bodyRows: 10 },
-      view: {},
-    },
+    component: "PromptHint",
+    props: { isDraft: false, isWorking: false, hint: "" },
     viewport: { columns: COLUMNS, rows: 40 },
   });
+  return mounted.drawn();
 }
 
-const AUTO_COMPACT_THRESHOLD = 227_000;
 const DEFAULT_USAGE = {
   startedAt: 0,
-  context: { window: 200_000, percent: STALE_CONTEXT_PERCENT },
+  context: { window: 200_000 },
   rateLimits: [{ kind: "five_hour", percentUsed: 5 }],
 };
 
-function usageWithThreshold(autoCompactThreshold: number | undefined) {
-  return {
-    startedAt: 0,
-    context: {
-      window: 1_000_000,
-      tokens: 222_000,
-      percent: 22,
-      breakdown: { autoCompactThreshold },
-    },
-    rateLimits: [],
-  };
-}
-
-function tokenMeasure(tokens: number) {
-  return {
-    context: { window: 1_000_000, tokens, percent: Math.round(tokens / 10_000) },
-    rateLimits: [],
-    changed: ["context" as const],
-  };
-}
-
-function measure($: Engine, contextPercent: number, fiveHourPercent: number) {
+function measure($: Engine, tokens: number, fiveHourPercent: number) {
   return $.session.measure({
-    context: { window: 200_000, percent: contextPercent },
+    context: { window: 200_000, tokens },
     rateLimits: [{ kind: "five_hour", percentUsed: fiveHourPercent }],
     changed: ["context", "rateLimits"],
   });

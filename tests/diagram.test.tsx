@@ -392,7 +392,7 @@ function mermaid(source: string): string {
 
 function mountReply($: Engine, text: string, columns: number) {
   return $.ui.mount({
-    plugin: "paneline",
+    plugin: "vane",
     surface: "terminal",
     component: "AssistantMessage",
     props: { text, isFirstOfReply: true },

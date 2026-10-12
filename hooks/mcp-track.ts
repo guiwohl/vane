@@ -8,9 +8,9 @@ export const TOOL_USES_KEY = "toolUses";
 
 const MCP_TOOL = /^mcp__/;
 
-const launchFolderAtom = atom({ plugin: "paneline", key: "launchFolder" } as const, "");
+const launchFolderAtom = atom({ plugin: "vane", key: "launchFolder" } as const, "");
 const toolUsesAtom = atom(
-  { plugin: "paneline", key: "toolUses" } as const,
+  { plugin: "vane", key: "toolUses" } as const,
   {} as Record<string, number>,
 );
 
