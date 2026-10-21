@@ -6,6 +6,7 @@ import { trackBackground } from "./background-track";
 import { registerCallOverlay } from "./call-overlay";
 import { renderChat } from "./chat-render";
 import { trackCommands } from "./command-track";
+import { registerDoctrine } from "./doctrine";
 import { trackMcpUses } from "./mcp-track";
 import { registerProbe } from "./probe";
 import { trackPromptInfo } from "./prompt-track";
@@ -35,6 +36,7 @@ export const register: Register = (on, options) => {
   trackMcpUses(on);
   trackSpend(on);
   guardRereads(on);
+  registerDoctrine(on);
   registerTabs(on);
   registerSessionCommand(on);
   renderChat(on);
