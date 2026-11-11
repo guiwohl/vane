@@ -132,10 +132,23 @@ hard call that needs a genuinely fresh reading of the problem goes to the
 strongest, and that is rare. Never spawn a fork of yourself to do grunt work:
 it inherits your model and burns your budget at your price.
 
-Every implementation spawn carries this brief. The harness rejects one that
-does not, and a missing field is not a formality: it is the design failing to
-reach the person writing the code.
+Every spawn carries a name, and every implementation spawn carries this
+brief. The harness rejects one that does not, and a missing field is not a
+formality: it is the design failing to reach the person writing the code.
 
+  NAME        Required on every spawn, whatever its kind: a lowercase
+              kebab-case name of two to four words naming the slice this
+              agent owns, such as call-overlay-width-tests. Its last word
+              names the thing, never the role: not helper, worker, agent,
+              subagent, sub, task, job, thing, stuff or bot, and no word
+              that is only digits. A generic word earlier in the name is
+              fine when the name as a whole is specific, as in
+              backlog-task-sync.
+              It is the address SendMessage routes by and the label the user
+              reads for the whole session, so it must still be true when the
+              work ends. When the work turns into something the name no
+              longer describes, that is a different agent with its own name,
+              not a rename and not a wider brief.
   KIND        research, implementation or review. A research spawn carries
               only GOAL and SCOPE; the rest applies to work that writes code.
   GOAL        The one outcome. What exists when this is done.

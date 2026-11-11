@@ -26,6 +26,37 @@ function missingFieldsOf(kind: SpawnKind, prompt: string): string[] {
   );
 }
 
+const MIN_NAME_WORDS = 2;
+const MAX_NAME_WORDS = 4;
+const NAME_SHAPE = new RegExp(
+  `^[a-z0-9]+(-[a-z0-9]+){${MIN_NAME_WORDS - 1},${MAX_NAME_WORDS - 1}}$`,
+);
+const NAME_RULE = "lowercase kebab-case name of two to four words naming the slice the agent owns";
+const GENERIC_NAME_WORDS = [
+  "agent",
+  "subagent",
+  "sub",
+  "helper",
+  "worker",
+  "task",
+  "job",
+  "thing",
+  "stuff",
+  "bot",
+];
+const NUMBER_WORD = /^\d+$/;
+
+function nameRefusalOf(name: string | undefined): string | undefined {
+  if (name === undefined || name.trim() === "") return `Give the agent a name: a ${NAME_RULE}.`;
+  if (!NAME_SHAPE.test(name)) return `Agent name "${name}" is not a ${NAME_RULE}.`;
+  const words = name.split("-");
+  if (words.some((word) => NUMBER_WORD.test(word)))
+    return `Agent name "${name}" has a number as a word. Use a ${NAME_RULE}, never a number.`;
+  const last = words[words.length - 1] ?? "";
+  if (!GENERIC_NAME_WORDS.includes(last)) return undefined;
+  return `Agent name "${name}" ends in the generic word "${last}". Use a ${NAME_RULE}.`;
+}
+
 async function isConstitutionEnabled($: EngineInterface): Promise<boolean> {
   return (await $.env.get("CLAUDE_CONSTITUTION")) === "1";
 }
@@ -45,6 +76,8 @@ export function registerDoctrine(on: On): void {
 
   on("classic.PreToolUse", { tool: "Agent" }, async ($, e, next) => {
     if (!(await isConstitutionEnabled($))) return next(e);
+    const nameRefusal = nameRefusalOf(e.name);
+    if (nameRefusal !== undefined) return { deny: nameRefusal };
     const kind = spawnKindOf(e.prompt);
     if (!isSpawnKind(kind))
       return { deny: `Start the prompt with a line "KIND: ${SPAWN_KINDS.join(" | ")}".` };
